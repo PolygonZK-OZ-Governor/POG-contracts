@@ -19,6 +19,8 @@ contract DAOHub is
     mapping(uint256 => bool) public collectionStarted;
     mapping(uint256 => bool) public collectionFinished;
 
+    event ReceiveSpokeVotingData(uint32, uint256);
+
     constructor(
         IVotes _token,
         uint32[] memory _spokeNetworks,
@@ -35,7 +37,7 @@ contract DAOHub is
         );
         for (uint16 i = 0; i < _spokeNetworks.length; i++) {
             require(
-                spokeNetworks[i] == _messengers[i].counterpartNetwork,
+                spokeNetworks[i] == _messengers[i].counterpartNetwork(),
                 "a spoke network mismatchs with the corresponding messenger"
             );
             messengers[spokeNetworks[i]] = _messengers[i];
@@ -51,7 +53,7 @@ contract DAOHub is
     }
 
     function quorum(
-        uint256 blockNumber
+        uint256
     ) public pure override returns (uint256) {
         return 1e18;
     }
@@ -143,16 +145,17 @@ contract DAOHub is
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
-        string memory description,
-        bool forceUpdateGlobalExitRoot
-    ) public virtual override returns (uint256) {
-        super.propose(targets, values, calldatas, description);
+        string memory description
+    ) public override returns (uint256) {
+        uint256 proposalId = super.propose(targets, values, calldatas, description);
         for (uint16 i = 0; i < spokeNetworks.length; i++) {
             messengers[spokeNetworks[i]].bridgeProposal(
                 proposalId,
-                forceUpdateGlobalExitRoot
+                block.timestamp,
+                true
             );
         }
+        return proposalId;
     }
 
     function onReceiveSpokeVotingData(
@@ -172,5 +175,6 @@ contract DAOHub is
             abstainVotes,
             true
         );
+        emit ReceiveSpokeVotingData(spokeNetwork, proposalId);
     }
 }
