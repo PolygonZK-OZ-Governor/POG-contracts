@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT 
 pragma solidity 0.8.17;
 
 import "./base/PolygonBridgeBase.sol";
@@ -41,7 +42,6 @@ abstract contract DAOSetelliteMessenger is PolygonBridgeBase {
         bool forceUpdateGlobalExitRoot
     ) external {
         _receiveTokens(amount);
-
         // Encode message data
         bytes memory messageData = abi.encode(destinationAddress, amount);
 
@@ -70,4 +70,10 @@ abstract contract DAOSetelliteMessenger is PolygonBridgeBase {
     function _onCollectionRequestSent(bytes memory payload) internal virtual;
 
     function _onNewProposal(bytes memory payload) internal virtual;
+
+       /**
+     * @dev Handle the reception of the tokens
+     * Must be implemented in parent contracts
+     */
+    function _receiveTokens(uint256 amount) internal virtual;
 }
