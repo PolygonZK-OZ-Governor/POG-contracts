@@ -289,8 +289,12 @@ describe(" Deploy", () => {
     ).to.be.equal(true);
     console.log(" check isProposal ID 1 = ", await DAOSatellite.isProposal(1n));
     //claim message
+
+      console.log(" mainnetExitRoot = ", mainnetExitRoot);
+      console.log("rollupExitRootSC = ",rollupExitRootSC);
+
     await expect(
-      mainnetPolygonZkEVMBridgeContract.claimMessage(
+      await mainnetPolygonZkEVMBridgeContract.claimMessage(
         proof,
         index,
         mainnetExitRoot,

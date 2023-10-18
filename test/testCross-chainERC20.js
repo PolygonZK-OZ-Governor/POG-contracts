@@ -20,6 +20,12 @@ function encodeMessageData(CODE, proposalID, proposalStart) {
   );
 }
 
+function encodeMessageTranferData(destinationAddres,  amount) {
+  return ethers.utils.defaultAbiCoder.encode(
+    ["address", "uint256"],
+    [destinationAddres, amount]
+  );
+}
 function calculateGlobalExitRoot(mainnetExitRoot, rollupExitRoot) {
   return ethers.utils.solidityKeccak256(["bytes32", "bytes32"], [mainnetExitRoot, rollupExitRoot]);
 }
@@ -150,76 +156,41 @@ describe(" Deploy", () => {
       networkIDMainnet, //counterNetWork
       tokenSatellite.address
     );
-
     console.log("tokenBrigdeContractTestnet's address = ", tokenBrigdeContractTestnet.address);
-
-    const DAOHubMessengerFactory = await ethers.getContractFactory("DAOHubMessenger");
-    DAOHubMessenger = await DAOHubMessengerFactory.deploy(
-      mainnetPolygonZkEVMBridgeContract.address,
-      predictTokenBridgeTestnet,
-      1,
-      DAOHub.address
-    );
-    console.log(" daoHubMessenger's address: ", await DAOHubMessenger.address);
-    console.log("                counter address: ", await DAOHubMessenger.counterpartContract());
-    console.log("                counter network: ", await DAOHubMessenger.counterpartNetwork());
-    console.log("                Control address: ", await DAOHubMessenger.controller());
-
-    //DAOSateToken
-    tokenSatellite = await tokenHubFactory.deploy("DAOSatelliteToken", "wDTK");
-    console.log("DAOSatelliteToken's address: ", await tokenSatellite.address);
-    //DAOSatellite
-    const daoStatelliteFactory = await ethers.getContractFactory("DAOSatellite");
-
-    DAOSatellite = await daoStatelliteFactory.deploy(
-      mainnetPolygonZkEVMBridgeContract.address,
-      DAOHubMessenger.address,
-      0n,
-      tokenSatellite.address,
-      12n
-    );
-    await DAOHub.addSpoke(1n, DAOHubMessenger.address);
-    console.log("DAOSatellite's address: ", DAOSatellite.address);
-
-    const boxFactory = await ethers.getContractFactory("Box");
-    box = await boxFactory.deploy();
-  });
-
-  it(" bridge proposal ", async () => {
-    //console.log(await tokenHub.balanceOf(deployer));
-
     for (let i = 1; i < 5; i++) {
       let v = getRandomInt(10000, 100000);
       await tokenHub.connect(deployer).transfer(user[i].address, BigInt(v));
       let vv = getRandomInt(10000, 100000);
       await tokenSatellite.connect(deployer).transfer(user[4 + i].address, BigInt(vv));
     }
+   
+  });
 
-    for (let i = 1; i < 5; i++)
-      console.log(`balance of user[${i}] at mainNet = `, await tokenHub.balanceOf(user[i].address));
-    for (let i = 1; i < 5; i++)
-      console.log(
-        `balance of user[${4 + i}] at spokeNet = `,
-        await tokenSatellite.balanceOf(user[4 + i].address)
-      );
+  it(" tranfer token ", async () => {
 
-    console.log(" box value = ", await box.retrieve());
+    // Create 2 user
+    let v = getRandomInt(10000, 100000);
+    await tokenHub.connect(deployer).transfer(user[1].address, BigInt(v));
+    let vv = getRandomInt(10000, 100000);
+    await tokenSatellite.connect(deployer).transfer(user[2].address, BigInt(vv));
+    // liqui to Bridge
+    await tokenHub.connect(deployer).transfer( tokenBrigdeContractMainnet.address, BigInt(10000));
+    await tokenSatellite.connect(deployer).transfer( tokenBrigdeContractTestnet.address, BigInt(10000) );
 
-    //create proposal change box value to 0 => 77
-    //bug here
-    encodedmessge = "";
+    console.log(`balance of user[1] at mainNet = `, await tokenHub.balanceOf(user[1].address));
+    console.log(`balance of bridge at mainNet = `,await tokenHub.balanceOf(tokenBrigdeContractMainnet.address));
+    console.log(`balance of user[2] at testNet = `,await tokenSatellite.balanceOf(user[2].address));
+    console.log(`balance of bridge at testNet = `,await tokenSatellite.balanceOf(tokenBrigdeContractTestnet.address));
 
-    const message = encodeMessageData(BRIDGE_PROPOSAL_SIG, 1n, 100n);
+    const message = encodeMessageTranferData(  user[2].address ,5000);
     const messageHash = ethers.utils.solidityKeccak256(["bytes"], [message]);
-    console.log(" messageHash = ", messageHash);
-    const height = 32;
-    const merkleTree = new MerkleTreeBridge(height);
 
-    const originAddressLeaf = DAOHubMessenger.address;
-    const destinationAddressLeaf = await DAOHubMessenger.counterpartContract();
-    const destinationNetwork = 1;
+    const originAddressLeaf = tokenBrigdeContractMainnet.address;
+    const destinationAddressLeaf = tokenBrigdeContractTestnet.address;
     const originNetwork = 0;
+    const destinationNetwork = 1;
     const amountLeaf = 0;
+
     const leafValue = getLeafValue(
       LEAF_TYPE_MESSAGE,
       originNetwork,
@@ -230,27 +201,38 @@ describe(" Deploy", () => {
       messageHash
     );
 
-    merkleTree.add(leafValue);
-    const rootJSMainnet = merkleTree.getRoot();
+    
     const depositCount = await mainnetPolygonZkEVMBridgeContract.depositCount();
     const rollupExitRoot = await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot();
 
-    await expect(DAOHubMessenger.bridgeProposal(1n, 100n, true))
-      .to.emit(DAOHubMessenger, `BridgeProposal`)
-      .withArgs(1n, 100n)
+
+    await tokenHub.connect(user[1]).approve(tokenBrigdeContractMainnet.address, 5000);
+    console.log(`balance of user[1] at mainNet = `, await tokenHub.balanceOf(user[1].address));
+
+    await expect( tokenBrigdeContractMainnet.connect(user[1]).bridgeToken(user[2].address, 5000, true))
+      .to.emit(tokenBrigdeContractMainnet, `BridgeTokens`)
+      .withArgs(user[2].address, 5000)
       .to.emit(mainnetPolygonZkEVMBridgeContract, `BridgeEvent`)
       .withArgs(
         1,
         originNetwork,
-        DAOHubMessenger.address,
+        tokenBrigdeContractMainnet.address,
         destinationNetwork,
-        await DAOHubMessenger.counterpartContract(),
+        tokenBrigdeContractTestnet.address,
         amountLeaf,
         message,
         depositCount
       );
 
-    // check merkle root with SC
+
+
+    // create merkle local to check
+    const height = 32;
+    const merkleTree = new MerkleTreeBridge(height);
+    merkleTree.add(leafValue);
+    const rootJSMainnet = merkleTree.getRoot();
+
+    // check merkle root with 
     const rootSCMainnet = await mainnetPolygonZkEVMBridgeContract.getDepositRoot();
     expect(rootSCMainnet).to.be.equal(rootJSMainnet);
 
@@ -268,76 +250,54 @@ describe(" Deploy", () => {
       )
     ).to.be.equal(true);
 
-    const computedGlobalExitRoot = calculateGlobalExitRoot(rootJSMainnet, rollupExitRoot);
-    expect(computedGlobalExitRoot).to.be.equal(
-      await mainnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot()
-    );
-  });
-
-  it("should claim proposal", async () => {
-    const height = 32;
-    const merkleTree = new MerkleTreeBridge(height);
-
-    const message = encodeMessageData(BRIDGE_PROPOSAL_SIG, 1n, 100n);
-    const messageHash = ethers.utils.solidityKeccak256(["bytes"], [message]);
-
-    const originNetwork = 0;
-    const destinationNetwork = 0;
-    const originAddressLeaf = DAOHubMessenger.address;
-    const destinationAddressLeaf = DAOSatellite.address;
-
-    console.log(" messageHash = ", messageHash);
-    const leafValue = getLeafValue(
-      1,
-      originNetwork,
-      originAddressLeaf,
-      destinationNetwork,
-      destinationAddressLeaf,
-      0,
-      messageHash
-    );
-
-    merkleTree.add(leafValue);
-    const rootJSRollup = merkleTree.getRoot();
-    const mainnetExitRoot = await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot();
-
-    await expect(mainnetPolygonZkEVMGlobalExitRoot.connect(rollup).updateExitRoot(rootJSRollup))
-      .to.emit(mainnetPolygonZkEVMGlobalExitRoot, "UpdateGlobalExitRoot")
-      .withArgs(mainnetExitRoot, rootJSRollup);
-
-    console.log("after update =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
-
-    // check roots
-    const rollupExitRootSC = await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot();
-    expect(rollupExitRootSC).to.be.equal(rootJSRollup);
-
-    const computedGlobalExitRoot = calculateGlobalExitRoot(mainnetExitRoot, rollupExitRootSC);
+    let computedGlobalExitRoot = calculateGlobalExitRoot(rootJSMainnet, rollupExitRoot);
     expect(computedGlobalExitRoot).to.be.equal(
       await mainnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot()
     );
 
-    // check merkle proof
-    const proof = merkleTree.getProofTreeByIndex(0);
-    const index = 0;
+
+
+
+
+    // update testNet Root by roll up account (relay will do this)
+    const rootJSTestnet = rootJSMainnet 
+    const testnetExitRoot = await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot();
+     await expect(testnetPolygonZkEVMGlobalExitRoot.connect(rollup).updateExitRoot(rootJSTestnet))
+       .to.emit(testnetPolygonZkEVMGlobalExitRoot, "UpdateGlobalExitRoot")
+       .withArgs(testnetExitRoot, rootJSTestnet);
+   const rollupExitRootSC = await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot();
+       expect(rollupExitRootSC).to.be.equal(rootJSMainnet);
+    computedGlobalExitRoot = calculateGlobalExitRoot(testnetExitRoot, rollupExitRootSC);
+    expect(computedGlobalExitRoot).to.be.equal(
+      await testnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot()
+    );
 
     // verify merkle proof
-    expect(verifyMerkleProof(leafValue, proof, index, rootJSRollup)).to.be.equal(true);
+    expect(verifyMerkleProof(leafValue, proof, index, rootJSTestnet)).to.be.equal(true);
     expect(
-      await mainnetPolygonZkEVMBridgeContract.verifyMerkleProof(
+      await testnetPolygonZkEVMBridgeContract.verifyMerkleProof(
         leafValue,
         proof,
         index,
-        rootJSRollup
+        rollupExitRootSC
       )
     ).to.be.equal(true);
-    console.log(" check isProposal ID 1 = ", await DAOSatellite.isProposal(1n));
-    //claim message
+
+    console.log(" testnetExitRoot ", testnetExitRoot);
+    console.log("rollupExitRootSC ", rollupExitRootSC);
+
+    console.log(" MAINNET AT MAINNET", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+
+    console.log(" ROLLUP AT TESTNET", await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
+    
+  console.log(" proof = ", destinationAddressLeaf);
+    // claimMessage
     await expect(
-      mainnetPolygonZkEVMBridgeContract.claimMessage(
+      await testnetPolygonZkEVMBridgeContract.claimMessage(
         proof,
         index,
-        mainnetExitRoot,
-        rollupExitRootSC,
+        await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot(),
+        await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot(),
         originNetwork,
         originAddressLeaf,
         destinationNetwork,
@@ -346,11 +306,7 @@ describe(" Deploy", () => {
         message
       )
     )
-      .to.emit(mainnetPolygonZkEVMBridgeContract, "ClaimEvent")
-      .withArgs(index, 0, DAOHubMessenger.address, DAOSatellite.address, 0);
-    //.to.emit(DAOSatellite, "NewProposal")
-    //.withArgs(1);
-
-    console.log(" check isProposal ID 1 = ", await DAOSatellite.isProposal(1n));
+    .to.emit(mainnetPolygonZkEVMBridgeContract, "ClaimEvent")
+    .withArgs(index, 0, tokenBrigdeContractMainnet.address, tokenBrigdeContractTestnet.address, 0);
   });
 });

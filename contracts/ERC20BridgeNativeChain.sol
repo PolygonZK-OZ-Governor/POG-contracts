@@ -41,7 +41,7 @@ contract ERC20BridgeNativeChain is PolygonERC20BridgeBase {
      * @param amount Token amount
      */
     function _receiveTokens(uint256 amount) internal override {
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        token.safeTransferFrom( msg.sender, address(this), amount);
     }
 
     /**
