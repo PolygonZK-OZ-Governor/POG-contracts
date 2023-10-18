@@ -12,7 +12,6 @@ interface IMessageController {
         uint256 againstVotes,
         uint256 abstainVotes
     ) external;
-
 }
 
 /**
@@ -21,47 +20,38 @@ interface IMessageController {
  * this base.
  */
 contract DAOHubMessenger is PolygonBridgeBase {
-    bytes4 constant REQUEST_COLLECTION_SIG = 0x55f0f9c7;
-    bytes4 constant BRIDGE_PROPOSAL_SIG = 0x7d5e81e2;
+    bytes4 constant REQUEST_COLLECTION_SIG = 0xae2f443b;
+    bytes4 constant BRIDGE_PROPOSAL_SIG = 0x8579906e;
+    bytes4 constant BRIDGE_VOTE_SIG = 0xcf53ead7;
 
     IMessageController public controller;
 
-    /**
-     * @param _polygonZkEVMBridge Polygon zkevm bridge address
-     * @param _counterpartContract Couterpart contract
-     * @param _counterpartNetwork Couterpart network
-     */
     constructor(
         IPolygonZkEVMBridge _polygonZkEVMBridge,
         address _counterpartContract,
         uint32 _counterpartNetwork,
-        IMessageReceiver _receiver
+        IMessageController _controller
     )
         PolygonBridgeBase(
             _polygonZkEVMBridge,
             _counterpartContract,
             _counterpartNetwork
         )
-        receiver = _receiver;
-    {}
+    {
+        controller = _controller;
+    }
 
     /**
      * @dev Emitted when send collection request to the counterpart network
      */
     event RequestCollection(uint256 proposalId);
-    event BridgeProposal(uint256 proposalId);
+    event BridgeProposal(uint256 proposalId, uint256 proposalStart);
 
-    modifier onlyController(){
+    modifier onlyController() {
         require(msg.sender == address(controller), "unauthorized");
         _;
     }
-    /**
-     * @notice Send a message to the bridge that contains the destination address and the token amount
-     * The parent contract should implement the receive token protocol and afterwards call this function
-     * @param destinationAddress Address destination that will receive the tokens on the other network
-     * @param amount Token amount
-     * @param forceUpdateGlobalExitRoot Indicates if the global exit root is updated or not
-     */
+
     function requestCollection(
         uint256 proposalId,
         bool forceUpdateGlobalExitRoot
@@ -78,36 +68,31 @@ contract DAOHubMessenger is PolygonBridgeBase {
         emit RequestCollection(proposalId);
     }
 
-        /**
-     * @notice Send a message to the bridge that contains the destination address and the token amount
-     * The parent contract should implement the receive token protocol and afterwards call this function
-     * @param destinationAddress Address destination that will receive the tokens on the other network
-     * @param amount Token amount
-     * @param forceUpdateGlobalExitRoot Indicates if the global exit root is updated or not
-     */
     function bridgeProposal(
         uint256 proposalId,
+        uint256 proposalStart,
         bool forceUpdateGlobalExitRoot
     ) external {
         // Encode message data
         bytes memory messageData = abi.encode(
             BRIDGE_PROPOSAL_SIG,
-            abi.encode(proposalId)
+            abi.encode(proposalId, proposalStart)
         );
 
         // Send message data through the bridge
         _bridgeMessage(messageData, forceUpdateGlobalExitRoot);
 
-        emit BridgeProposal(proposalId);
+        emit BridgeProposal(proposalId, proposalStart);
     }
 
-    /**
-     * @notice Internal function triggered when receive a message
-     * @param data message data containing the destination address and the token amount
-     */
     function _onMessageReceived(bytes memory data) internal override {
         // Decode message data
-        (bytes4 selector, bytes payload) = abi.decode(data, (bytes4, bytes));
+        (bytes4 functionSig, bytes memory payload) = abi.decode(
+            data,
+            (bytes4, bytes)
+        );
+        require(functionSig == BRIDGE_VOTE_SIG, "Operation is not supported");
+        _onReceiveSpokeVotingData(payload);
     }
 
     function _onReceiveSpokeVotingData(bytes memory payload) internal {
@@ -118,6 +103,12 @@ contract DAOHubMessenger is PolygonBridgeBase {
             uint256 abstainVotes
         ) = abi.decode(payload, (uint256, uint256, uint256, uint256));
 
-        controller.onReceiveSpokeVotingData(counterpartNetwork, proposalId, forVotes, againstVotes, abstainVotes);
+        controller.onReceiveSpokeVotingData(
+            counterpartNetwork,
+            proposalId,
+            forVotes,
+            againstVotes,
+            abstainVotes
+        );
     }
 }
