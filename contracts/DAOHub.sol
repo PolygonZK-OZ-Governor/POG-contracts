@@ -177,4 +177,8 @@ contract DAOHub is
         );
         emit ReceiveSpokeVotingData(spokeNetwork, proposalId);
     }
+
+    function addSpoke(uint32 spokeNetwork, DAOHubMessenger messengerAddress) public {
+        messengers[spokeNetwork] = messengerAddress;
+    } 
 }
