@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-
+import "./base/PolygonBridgeBase.sol";
 pragma solidity 0.8.17;
 
 contract DAOToken is  ERC20Votes {
@@ -10,6 +10,9 @@ contract DAOToken is  ERC20Votes {
     ERC20Permit(name) {
     _mint(msg.sender, s_maxSupply);
    }
+
+  
+
    function _afterTokenTransfer(
     address from,
     address to,
