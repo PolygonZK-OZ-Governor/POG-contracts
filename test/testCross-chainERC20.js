@@ -51,12 +51,12 @@ describe(" Deploy", () => {
 
   const mainnetPolygonZkEVMAddress = "0x0000000000000000000000000000000000000000";
   const testnetPolygonZkEVMAddress = "0x1111111111111111111111111111111111111111";
-  const LEAF_TYPE_MESSAGE = 1n;
-
+  const LEAF_TYPE_MESSAGE = 1;
+  let rolluptestnet;
   let user = new Array(10);
   beforeEach("Deploy contracts", async () => {
     //deployer
-    [deployer, rollup, user[1], user[2], user[3], user[4], user[5], user[6], user[7], user[8]] =
+    [deployer, rollup, rolluptestnet, user[1], user[2], user[3], user[4], user[5], user[6], user[7], user[8]] =
       await ethers.getSigners();
     // deploy mainnetPolygonZkEVMBridge
     const PolygonZkEVMBridgeFactory = await ethers.getContractFactory("PolygonZkEVMBridge");
@@ -112,7 +112,7 @@ describe(" Deploy", () => {
     await testnetPolygonZkEVMBridgeContract.initialize(
       networkIDRollup,
       testnetPolygonZkEVMGlobalExitRoot.address,
-      testnetPolygonZkEVMAddress
+      rolluptestnet.address
     );
 
     //===================================//
@@ -192,7 +192,7 @@ describe(" Deploy", () => {
     const amountLeaf = 0;
 
     const leafValue = getLeafValue(
-      LEAF_TYPE_MESSAGE,
+      1,
       originNetwork,
       originAddressLeaf,
       destinationNetwork,
@@ -205,10 +205,10 @@ describe(" Deploy", () => {
     const depositCount = await mainnetPolygonZkEVMBridgeContract.depositCount();
     const rollupExitRoot = await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot();
 
-
+    // appove
     await tokenHub.connect(user[1]).approve(tokenBrigdeContractMainnet.address, 5000);
-    console.log(`balance of user[1] at mainNet = `, await tokenHub.balanceOf(user[1].address));
 
+    // bridgeToken
     await expect( tokenBrigdeContractMainnet.connect(user[1]).bridgeToken(user[2].address, 5000, true))
       .to.emit(tokenBrigdeContractMainnet, `BridgeTokens`)
       .withArgs(user[2].address, 5000)
@@ -223,8 +223,6 @@ describe(" Deploy", () => {
         message,
         depositCount
       );
-
-
 
     // create merkle local to check
     const height = 32;
@@ -249,6 +247,9 @@ describe(" Deploy", () => {
         rootSCMainnet
       )
     ).to.be.equal(true);
+    console.log("AFTER BRIDGE")
+    console.log(" mainnet =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+    console.log(" rollup =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
 
     let computedGlobalExitRoot = calculateGlobalExitRoot(rootJSMainnet, rollupExitRoot);
     expect(computedGlobalExitRoot).to.be.equal(
@@ -267,6 +268,7 @@ describe(" Deploy", () => {
        .withArgs(testnetExitRoot, rootJSTestnet);
    const rollupExitRootSC = await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot();
        expect(rollupExitRootSC).to.be.equal(rootJSMainnet);
+
     computedGlobalExitRoot = calculateGlobalExitRoot(testnetExitRoot, rollupExitRootSC);
     expect(computedGlobalExitRoot).to.be.equal(
       await testnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot()
@@ -279,21 +281,20 @@ describe(" Deploy", () => {
         leafValue,
         proof,
         index,
-        rollupExitRootSC
+        await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot(),
       )
     ).to.be.equal(true);
 
     console.log(" testnetExitRoot ", testnetExitRoot);
     console.log("rollupExitRootSC ", rollupExitRootSC);
 
-    console.log(" MAINNET AT MAINNET", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
-
-    console.log(" ROLLUP AT TESTNET", await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
-    
-  console.log(" proof = ", destinationAddressLeaf);
+  console.log("BEFORE CLAIM")
+  console.log(" mainnet =  ", await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+  console.log(" rollup =  ", await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
+  console.log(" i don't know verify on chain is true but claim is wrong ");
     // claimMessage
     await expect(
-      await testnetPolygonZkEVMBridgeContract.claimMessage(
+      await testnetPolygonZkEVMBridgeContract.connect(rollup).claimMessage(
         proof,
         index,
         await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot(),
@@ -310,3 +311,9 @@ describe(" Deploy", () => {
     .withArgs(index, 0, tokenBrigdeContractMainnet.address, tokenBrigdeContractTestnet.address, 0);
   });
 });
+
+// tai vi trong example chung no xai chung 1 bridge o mainnet, o phan nay em thu viet 2 cai cau o 2 networkID khac nhau va chay thu thi 
+// loi nam o phan verify, em nghi la brighe thi chung phai tu dong update (relayer), tuc la khi minh hoat dong
+// khi minh bridge message thi mainnetRoot cua chain do se duoc update
+// khi minh su dung update RollUp thi RollupRoot cua chain do se duoc update
+// tuy nhien khi minh su dung claimMessage o testnet thi se su dung mainnetRoot cua testnet de verify chu k phai RollUp. em dang nghi co the la cau 1 chieu :v

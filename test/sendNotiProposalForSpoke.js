@@ -229,6 +229,11 @@ describe(" Deploy", () => {
     expect(computedGlobalExitRoot).to.be.equal(
       await mainnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot()
     );
+
+    console.log("AFTER BRIDGE")
+    console.log(" mainnet =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+    console.log(" rollup =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
+
   });
 
   it("should claim proposal", async () => {
@@ -292,6 +297,10 @@ describe(" Deploy", () => {
 
       console.log(" mainnetExitRoot = ", mainnetExitRoot);
       console.log("rollupExitRootSC = ",rollupExitRootSC);
+
+      console.log("BEFORE CLAIM")
+      console.log(" mainnet =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+      console.log(" rollup =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
 
     await expect(
       await mainnetPolygonZkEVMBridgeContract.claimMessage(
