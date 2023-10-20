@@ -1,8 +1,6 @@
 const { ethers, upgrades } = require("hardhat");
-
 const { getContractAddress } = require("@ethersproject/address");
 const { expect, use } = require("chai");
-
 const MerkleTreeBridge = require("@0xpolygonhermez/zkevm-commonjs").MTBridge;
 const { verifyMerkleProof, getLeafValue } = require("@0xpolygonhermez/zkevm-commonjs").mtBridgeUtils;
 
@@ -11,14 +9,6 @@ function getRandomInt(min, max) {
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
-function encodeMessageData(CODE, proposalID, proposalStart) {
-  return ethers.utils.defaultAbiCoder.encode(
-    ["bytes4", "bytes"],
-    [CODE, ethers.utils.defaultAbiCoder.encode(["uint256", "uint256"], [proposalID, proposalStart])]
-  );
-}
-
 function encodeMessageTranferData(destinationAddres, amount) {
   return ethers.utils.defaultAbiCoder.encode(["address", "uint256"], [destinationAddres, amount]);
 }
@@ -26,7 +16,7 @@ function calculateGlobalExitRoot(mainnetExitRoot, rollupExitRoot) {
   return ethers.utils.solidityKeccak256(["bytes32", "bytes32"], [mainnetExitRoot, rollupExitRoot]);
 }
 
-describe(" Deploy", () => {
+describe("Deploy", () => {
   let deployer;
   let rollup;
 
@@ -47,20 +37,20 @@ describe(" Deploy", () => {
 
   const mainnetPolygonZkEVMAddress = "0x0000000000000000000000000000000000000000";
   const testnetPolygonZkEVMAddress = "0x1111111111111111111111111111111111111111";
+
   const LEAF_TYPE_MESSAGE = 1;
-  let rolluptestnet;
+
   let user = new Array(10);
   beforeEach("Deploy contracts", async () => {
     //deployer
     [deployer, rollup, rolluptestnet, user[1], user[2], user[3], user[4], user[5], user[6], user[7], user[8]] = await ethers.getSigners();
-    // deploy mainnetPolygonZkEVMBridge
+
     const PolygonZkEVMBridgeFactory = await ethers.getContractFactory("PolygonZkEVMBridge");
 
-    //AT MAINNET
     mainnetPolygonZkEVMBridgeContract = await upgrades.deployProxy(PolygonZkEVMBridgeFactory, [], {
       initializer: false,
     });
-    //console.log(" mainnetPolygonZkEVMBridgeContract's address: ", mainnetPolygonZkEVMBridgeContract.address);
+
     // deploy global exit root manager
     const mainnetPolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory("PolygonZkEVMGlobalExitRoot");
     mainnetPolygonZkEVMGlobalExitRoot = await mainnetPolygonZkEVMGlobalExitRootFactory.deploy(
@@ -68,60 +58,50 @@ describe(" Deploy", () => {
       mainnetPolygonZkEVMBridgeContract.address
     );
 
-    //console.log(" mainnetPolygonZKEVMGlobalExitRoot's address: ", mainnetPolygonZkEVMGlobalExitRoot.address);
     await mainnetPolygonZkEVMBridgeContract.initialize(
       networkIDMainnet,
       mainnetPolygonZkEVMGlobalExitRoot.address,
       mainnetPolygonZkEVMAddress
     );
 
-    //AT TESTNET
     testnetPolygonZkEVMBridgeContract = await upgrades.deployProxy(PolygonZkEVMBridgeFactory, [], {
       initializer: false,
     });
-    //console.log(" testnetPolygonZkEVMBridgeContract's address: ", testnetPolygonZkEVMBridgeContract.address);
-    // deploy global exit root manager
+
     const testnetPolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory("PolygonZkEVMGlobalExitRoot");
     testnetPolygonZkEVMGlobalExitRoot = await testnetPolygonZkEVMGlobalExitRootFactory.deploy(
       rollup.address,
       testnetPolygonZkEVMBridgeContract.address
     );
 
-    //console.log(" testnetPolygonZKEVMGlobalExitRoot's address: ", testnetPolygonZkEVMGlobalExitRoot.address);
-    await testnetPolygonZkEVMBridgeContract.initialize(networkIDRollup, testnetPolygonZkEVMGlobalExitRoot.address, rolluptestnet.address);
-
-    //===================================//
+    await testnetPolygonZkEVMBridgeContract.initialize(
+      networkIDRollup,
+      testnetPolygonZkEVMGlobalExitRoot.address,
+      testnetPolygonZkEVMAddress
+    );
 
     //DAOtokenMainnet
     const tokenHubFactory = await ethers.getContractFactory("DAOToken");
     tokenHub = await tokenHubFactory.deploy("DAOToken", "DTK");
-    //console.log(" tokenHub at address: ", await tokenHub.address);
-
-    const tokenBrigdeContractMainnetFactory = await ethers.getContractFactory("ERC20BridgeNativeChain");
 
     //DaotokenTestnet
     tokenSatellite = await tokenHubFactory.deploy("DAOSatelliteToken", "wDTK");
-    //console.log(" tokenSatellite at address: ", tokenSatellite.address);
+
     const nonceZkevm = Number(await deployer.getTransactionCount());
-    const predictDAOHubMessenger = getContractAddress({
-      from: deployer.address,
-      nonce: nonceZkevm,
-    });
+
     const predictTokenBridgeTestnet = getContractAddress({
       from: deployer.address,
       nonce: nonceZkevm + 1,
     });
 
-    //console.log("predict tokenBridge Mainnet = ", predictDAOHubMessenger);
-    //console.log("predict tokenBridge Testnet = ", predictTokenBridgeTestnet);
+    const tokenBrigdeContractMainnetFactory = await ethers.getContractFactory("ERC20BridgeNativeChain");
 
     tokenBrigdeContractMainnet = await tokenBrigdeContractMainnetFactory.deploy(
       mainnetPolygonZkEVMBridgeContract.address,
       predictTokenBridgeTestnet,
-      networkIDRollup, //counterNetwork
+      networkIDRollup,
       tokenHub.address
     );
-    //console.log("tokenBrigdeContractMainnet's address = ", tokenBrigdeContractMainnet.address);
 
     tokenBrigdeContractTestnet = await tokenBrigdeContractMainnetFactory.deploy(
       testnetPolygonZkEVMBridgeContract.address,
@@ -129,13 +109,6 @@ describe(" Deploy", () => {
       networkIDMainnet, //counterNetWork
       tokenSatellite.address
     );
-    //console.log("tokenBrigdeContractTestnet's address = ", tokenBrigdeContractTestnet.address);
-    for (let i = 1; i < 5; i++) {
-      let v = getRandomInt(10000, 100000);
-      await tokenHub.connect(deployer).transfer(user[i].address, BigInt(v));
-      let vv = getRandomInt(10000, 100000);
-      await tokenSatellite.connect(deployer).transfer(user[4 + i].address, BigInt(vv));
-    }
   });
 
   it(" tranfer token from network 1 to network 0 ", async () => {
@@ -144,14 +117,12 @@ describe(" Deploy", () => {
     await tokenHub.connect(deployer).transfer(user[1].address, BigInt(v));
     let vv = getRandomInt(10000, 100000);
     await tokenSatellite.connect(deployer).transfer(user[2].address, BigInt(vv));
-    // liqui to Bridge
+    // liquidity to Bridge
     await tokenHub.connect(deployer).transfer(tokenBrigdeContractMainnet.address, BigInt(10000));
     await tokenSatellite.connect(deployer).transfer(tokenBrigdeContractTestnet.address, BigInt(10000));
 
-    console.log(`balance of user[1] before tranfer at mainNet = `, Number(await tokenHub.balanceOf(user[1].address)));
-    // console.log(`balance of bridge at mainNet = `, await tokenHub.balanceOf(tokenBrigdeContractMainnet.address));
-    console.log(`balance of user[2] before tranfer at testNet = `, Number(await tokenSatellite.balanceOf(user[2].address)));
-    // console.log(`balance of bridge at testNet = `, await tokenSatellite.balanceOf(tokenBrigdeContractTestnet.address));
+    const balanceBeforeUser1 = Number(await tokenHub.balanceOf(user[1].address));
+    const balanceBeforeUser2 = Number(await tokenSatellite.balanceOf(user[2].address));
 
     const message = encodeMessageTranferData(user[1].address, 5000);
     const messageHash = ethers.utils.solidityKeccak256(["bytes"], [message]);
@@ -163,7 +134,7 @@ describe(" Deploy", () => {
     const amountLeaf = 0;
 
     const leafValue = getLeafValue(
-      1,
+      LEAF_TYPE_MESSAGE,
       originNetwork,
       originAddressLeaf,
       destinationNetwork,
@@ -206,9 +177,6 @@ describe(" Deploy", () => {
     // verify merkle proof
     expect(verifyMerkleProof(leafValue, proof, index, rootSCMainnet)).to.be.equal(true);
     expect(await testnetPolygonZkEVMBridgeContract.verifyMerkleProof(leafValue, proof, index, rootSCMainnet)).to.be.equal(true);
-    // console.log("AFTER BRIDGE");
-    // console.log(" mainnetRoot at testnet =  ", await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
-    // console.log(" rollupRoot at testnet  =  ", await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
 
     let computedGlobalExitRoot = calculateGlobalExitRoot(rootJSMainnet, rollupExitRoot);
     expect(computedGlobalExitRoot).to.be.equal(await testnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot());
@@ -236,14 +204,7 @@ describe(" Deploy", () => {
       )
     ).to.be.equal(true);
 
-    // console.log(" testnetExitRoot ", testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
-    // console.log("rollupExitRootSC ", rollupExitRootSC);
-
-    // console.log("BEFORE CLAIM");
-    // console.log(" mainnet =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
-    // console.log(" rollup =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
-    // console.log(" i don't know verify on chain is true but claim is wrong ");
-    // // claimMessage
+    // claimMessage
     await expect(
       await mainnetPolygonZkEVMBridgeContract
         .connect(rollup)
@@ -262,8 +223,24 @@ describe(" Deploy", () => {
     )
       .to.emit(mainnetPolygonZkEVMBridgeContract, "ClaimEvent")
       .withArgs(index, originNetwork, tokenBrigdeContractTestnet.address, tokenBrigdeContractMainnet.address, 0);
-    console.log("balance of user[1] after tranfer at mainNet = ", Number(await tokenHub.balanceOf(user[1].address)));
-    console.log("balance of user[2] after tranfer at testNet = ", Number(await tokenSatellite.balanceOf(user[2].address)));
+
+    expect(await tokenHub.balanceOf(user[1].address)).to.equal(balanceBeforeUser1 + 5000);
+    expect(await tokenSatellite.balanceOf(user[2].address)).to.equal(balanceBeforeUser2 - 5000);
+
+    await expect(
+      mainnetPolygonZkEVMBridgeContract.claimAsset(
+        proof,
+        index,
+        await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot(),
+        await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot(),
+        originNetwork,
+        originAddressLeaf,
+        destinationNetwork,
+        destinationAddressLeaf,
+        0,
+        message
+      )
+    ).to.be.revertedWith("AlreadyClaimed");
   });
 
   it(" tranfer token from network 0 to network 1 ", async () => {
