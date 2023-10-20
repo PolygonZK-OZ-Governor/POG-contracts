@@ -1,11 +1,10 @@
 const { ethers, upgrades } = require("hardhat");
 
 const { getContractAddress } = require("@ethersproject/address");
-const { expect } = require("chai");
+const { expect, use } = require("chai");
 
 const MerkleTreeBridge = require("@0xpolygonhermez/zkevm-commonjs").MTBridge;
-const { verifyMerkleProof, getLeafValue } =
-  require("@0xpolygonhermez/zkevm-commonjs").mtBridgeUtils;
+const { verifyMerkleProof, getLeafValue } = require("@0xpolygonhermez/zkevm-commonjs").mtBridgeUtils;
 
 function getRandomInt(min, max) {
   min = Math.ceil(min);
@@ -20,11 +19,8 @@ function encodeMessageData(CODE, proposalID, proposalStart) {
   );
 }
 
-function encodeMessageTranferData(destinationAddres,  amount) {
-  return ethers.utils.defaultAbiCoder.encode(
-    ["address", "uint256"],
-    [destinationAddres, amount]
-  );
+function encodeMessageTranferData(destinationAddres, amount) {
+  return ethers.utils.defaultAbiCoder.encode(["address", "uint256"], [destinationAddres, amount]);
 }
 function calculateGlobalExitRoot(mainnetExitRoot, rollupExitRoot) {
   return ethers.utils.solidityKeccak256(["bytes32", "bytes32"], [mainnetExitRoot, rollupExitRoot]);
@@ -56,8 +52,7 @@ describe(" Deploy", () => {
   let user = new Array(10);
   beforeEach("Deploy contracts", async () => {
     //deployer
-    [deployer, rollup, rolluptestnet, user[1], user[2], user[3], user[4], user[5], user[6], user[7], user[8]] =
-      await ethers.getSigners();
+    [deployer, rollup, rolluptestnet, user[1], user[2], user[3], user[4], user[5], user[6], user[7], user[8]] = await ethers.getSigners();
     // deploy mainnetPolygonZkEVMBridge
     const PolygonZkEVMBridgeFactory = await ethers.getContractFactory("PolygonZkEVMBridge");
 
@@ -65,23 +60,15 @@ describe(" Deploy", () => {
     mainnetPolygonZkEVMBridgeContract = await upgrades.deployProxy(PolygonZkEVMBridgeFactory, [], {
       initializer: false,
     });
-    console.log(
-      " mainnetPolygonZkEVMBridgeContract's address: ",
-      mainnetPolygonZkEVMBridgeContract.address
-    );
+    //console.log(" mainnetPolygonZkEVMBridgeContract's address: ", mainnetPolygonZkEVMBridgeContract.address);
     // deploy global exit root manager
-    const mainnetPolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory(
-      "PolygonZkEVMGlobalExitRoot"
-    );
+    const mainnetPolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory("PolygonZkEVMGlobalExitRoot");
     mainnetPolygonZkEVMGlobalExitRoot = await mainnetPolygonZkEVMGlobalExitRootFactory.deploy(
       rollup.address,
       mainnetPolygonZkEVMBridgeContract.address
     );
 
-    console.log(
-      " mainnetPolygonZKEVMGlobalExitRoot's address: ",
-      mainnetPolygonZkEVMGlobalExitRoot.address
-    );
+    //console.log(" mainnetPolygonZKEVMGlobalExitRoot's address: ", mainnetPolygonZkEVMGlobalExitRoot.address);
     await mainnetPolygonZkEVMBridgeContract.initialize(
       networkIDMainnet,
       mainnetPolygonZkEVMGlobalExitRoot.address,
@@ -92,43 +79,29 @@ describe(" Deploy", () => {
     testnetPolygonZkEVMBridgeContract = await upgrades.deployProxy(PolygonZkEVMBridgeFactory, [], {
       initializer: false,
     });
-    console.log(
-      " testnetPolygonZkEVMBridgeContract's address: ",
-      testnetPolygonZkEVMBridgeContract.address
-    );
+    //console.log(" testnetPolygonZkEVMBridgeContract's address: ", testnetPolygonZkEVMBridgeContract.address);
     // deploy global exit root manager
-    const testnetPolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory(
-      "PolygonZkEVMGlobalExitRoot"
-    );
+    const testnetPolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory("PolygonZkEVMGlobalExitRoot");
     testnetPolygonZkEVMGlobalExitRoot = await testnetPolygonZkEVMGlobalExitRootFactory.deploy(
       rollup.address,
       testnetPolygonZkEVMBridgeContract.address
     );
 
-    console.log(
-      " testnetPolygonZKEVMGlobalExitRoot's address: ",
-      testnetPolygonZkEVMGlobalExitRoot.address
-    );
-    await testnetPolygonZkEVMBridgeContract.initialize(
-      networkIDRollup,
-      testnetPolygonZkEVMGlobalExitRoot.address,
-      rolluptestnet.address
-    );
+    //console.log(" testnetPolygonZKEVMGlobalExitRoot's address: ", testnetPolygonZkEVMGlobalExitRoot.address);
+    await testnetPolygonZkEVMBridgeContract.initialize(networkIDRollup, testnetPolygonZkEVMGlobalExitRoot.address, rolluptestnet.address);
 
     //===================================//
 
     //DAOtokenMainnet
     const tokenHubFactory = await ethers.getContractFactory("DAOToken");
     tokenHub = await tokenHubFactory.deploy("DAOToken", "DTK");
-    console.log(" tokenHub at address: ", await tokenHub.address);
+    //console.log(" tokenHub at address: ", await tokenHub.address);
 
-    const tokenBrigdeContractMainnetFactory = await ethers.getContractFactory(
-      "ERC20BridgeNativeChain"
-    );
+    const tokenBrigdeContractMainnetFactory = await ethers.getContractFactory("ERC20BridgeNativeChain");
 
     //DaotokenTestnet
     tokenSatellite = await tokenHubFactory.deploy("DAOSatelliteToken", "wDTK");
-    console.log(" tokenSatellite at address: ", tokenSatellite.address);
+    //console.log(" tokenSatellite at address: ", tokenSatellite.address);
     const nonceZkevm = Number(await deployer.getTransactionCount());
     const predictDAOHubMessenger = getContractAddress({
       from: deployer.address,
@@ -139,8 +112,8 @@ describe(" Deploy", () => {
       nonce: nonceZkevm + 1,
     });
 
-    console.log("predict tokenBridge Mainnet = ", predictDAOHubMessenger);
-    console.log("predict tokenBridge Testnet = ", predictTokenBridgeTestnet);
+    //console.log("predict tokenBridge Mainnet = ", predictDAOHubMessenger);
+    //console.log("predict tokenBridge Testnet = ", predictTokenBridgeTestnet);
 
     tokenBrigdeContractMainnet = await tokenBrigdeContractMainnetFactory.deploy(
       mainnetPolygonZkEVMBridgeContract.address,
@@ -148,7 +121,7 @@ describe(" Deploy", () => {
       networkIDRollup, //counterNetwork
       tokenHub.address
     );
-    console.log("tokenBrigdeContractMainnet's address = ", tokenBrigdeContractMainnet.address);
+    //console.log("tokenBrigdeContractMainnet's address = ", tokenBrigdeContractMainnet.address);
 
     tokenBrigdeContractTestnet = await tokenBrigdeContractMainnetFactory.deploy(
       testnetPolygonZkEVMBridgeContract.address,
@@ -156,33 +129,159 @@ describe(" Deploy", () => {
       networkIDMainnet, //counterNetWork
       tokenSatellite.address
     );
-    console.log("tokenBrigdeContractTestnet's address = ", tokenBrigdeContractTestnet.address);
+    //console.log("tokenBrigdeContractTestnet's address = ", tokenBrigdeContractTestnet.address);
     for (let i = 1; i < 5; i++) {
       let v = getRandomInt(10000, 100000);
       await tokenHub.connect(deployer).transfer(user[i].address, BigInt(v));
       let vv = getRandomInt(10000, 100000);
       await tokenSatellite.connect(deployer).transfer(user[4 + i].address, BigInt(vv));
     }
-   
   });
 
-  it(" tranfer token ", async () => {
-
+  it(" tranfer token from network 1 to network 0 ", async () => {
     // Create 2 user
     let v = getRandomInt(10000, 100000);
     await tokenHub.connect(deployer).transfer(user[1].address, BigInt(v));
     let vv = getRandomInt(10000, 100000);
     await tokenSatellite.connect(deployer).transfer(user[2].address, BigInt(vv));
     // liqui to Bridge
-    await tokenHub.connect(deployer).transfer( tokenBrigdeContractMainnet.address, BigInt(10000));
-    await tokenSatellite.connect(deployer).transfer( tokenBrigdeContractTestnet.address, BigInt(10000) );
+    await tokenHub.connect(deployer).transfer(tokenBrigdeContractMainnet.address, BigInt(10000));
+    await tokenSatellite.connect(deployer).transfer(tokenBrigdeContractTestnet.address, BigInt(10000));
 
-    console.log(`balance of user[1] at mainNet = `, await tokenHub.balanceOf(user[1].address));
-    console.log(`balance of bridge at mainNet = `,await tokenHub.balanceOf(tokenBrigdeContractMainnet.address));
-    console.log(`balance of user[2] at testNet = `,await tokenSatellite.balanceOf(user[2].address));
-    console.log(`balance of bridge at testNet = `,await tokenSatellite.balanceOf(tokenBrigdeContractTestnet.address));
+    console.log(`balance of user[1] before tranfer at mainNet = `, Number(await tokenHub.balanceOf(user[1].address)));
+    // console.log(`balance of bridge at mainNet = `, await tokenHub.balanceOf(tokenBrigdeContractMainnet.address));
+    console.log(`balance of user[2] before tranfer at testNet = `, Number(await tokenSatellite.balanceOf(user[2].address)));
+    // console.log(`balance of bridge at testNet = `, await tokenSatellite.balanceOf(tokenBrigdeContractTestnet.address));
 
-    const message = encodeMessageTranferData(  user[2].address ,5000);
+    const message = encodeMessageTranferData(user[1].address, 5000);
+    const messageHash = ethers.utils.solidityKeccak256(["bytes"], [message]);
+
+    const originAddressLeaf = tokenBrigdeContractTestnet.address;
+    const destinationAddressLeaf = tokenBrigdeContractMainnet.address;
+    const originNetwork = 1;
+    const destinationNetwork = 0;
+    const amountLeaf = 0;
+
+    const leafValue = getLeafValue(
+      1,
+      originNetwork,
+      originAddressLeaf,
+      destinationNetwork,
+      destinationAddressLeaf,
+      amountLeaf,
+      messageHash
+    );
+
+    const depositCount = await testnetPolygonZkEVMBridgeContract.depositCount();
+    const rollupExitRoot = await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot();
+
+    // appove
+    await tokenSatellite.connect(user[2]).approve(tokenBrigdeContractTestnet.address, 5000);
+
+    // bridgeToken
+    await expect(tokenBrigdeContractTestnet.connect(user[2]).bridgeToken(user[1].address, 5000, true))
+      .to.emit(tokenBrigdeContractTestnet, `BridgeTokens`)
+      .withArgs(user[2].address, 5000)
+      .to.emit(testnetPolygonZkEVMBridgeContract, `BridgeEvent`)
+      .withArgs(
+        1,
+        originNetwork,
+        tokenBrigdeContractTestnet.address,
+        destinationNetwork,
+        tokenBrigdeContractMainnet.address,
+        amountLeaf,
+        message,
+        depositCount
+      );
+    // create merkle local to check
+    const height = 32;
+    const merkleTree = new MerkleTreeBridge(height);
+    merkleTree.add(leafValue);
+    const rootJSMainnet = merkleTree.getRoot();
+    // check merkle root with
+    const rootSCMainnet = await testnetPolygonZkEVMBridgeContract.getDepositRoot();
+    expect(rootSCMainnet).to.be.equal(rootJSMainnet);
+    const proof = merkleTree.getProofTreeByIndex(0);
+    const index = 0;
+    // verify merkle proof
+    expect(verifyMerkleProof(leafValue, proof, index, rootSCMainnet)).to.be.equal(true);
+    expect(await testnetPolygonZkEVMBridgeContract.verifyMerkleProof(leafValue, proof, index, rootSCMainnet)).to.be.equal(true);
+    // console.log("AFTER BRIDGE");
+    // console.log(" mainnetRoot at testnet =  ", await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+    // console.log(" rollupRoot at testnet  =  ", await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
+
+    let computedGlobalExitRoot = calculateGlobalExitRoot(rootJSMainnet, rollupExitRoot);
+    expect(computedGlobalExitRoot).to.be.equal(await testnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot());
+
+    // update testNet Root by roll up account (relay will do this)
+    const rootJSTestnet = rootJSMainnet;
+    const mainnetExitRoot = await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot();
+    await expect(mainnetPolygonZkEVMGlobalExitRoot.connect(rollup).updateExitRoot(rootJSTestnet))
+      .to.emit(mainnetPolygonZkEVMGlobalExitRoot, "UpdateGlobalExitRoot")
+      .withArgs(mainnetExitRoot, rootJSTestnet);
+
+    const rollupExitRootSC = await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot();
+    expect(rollupExitRootSC).to.be.equal(rootJSMainnet);
+    computedGlobalExitRoot = calculateGlobalExitRoot(await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot(), rollupExitRootSC);
+    expect(computedGlobalExitRoot).to.be.equal(await mainnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot());
+
+    // verify merkle proof
+    expect(verifyMerkleProof(leafValue, proof, index, rootJSTestnet)).to.be.equal(true);
+    expect(
+      await mainnetPolygonZkEVMBridgeContract.verifyMerkleProof(
+        leafValue,
+        proof,
+        index,
+        await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot()
+      )
+    ).to.be.equal(true);
+
+    // console.log(" testnetExitRoot ", testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+    // console.log("rollupExitRootSC ", rollupExitRootSC);
+
+    // console.log("BEFORE CLAIM");
+    // console.log(" mainnet =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+    // console.log(" rollup =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
+    // console.log(" i don't know verify on chain is true but claim is wrong ");
+    // // claimMessage
+    await expect(
+      await mainnetPolygonZkEVMBridgeContract
+        .connect(rollup)
+        .claimMessage(
+          proof,
+          index,
+          await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot(),
+          await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot(),
+          originNetwork,
+          originAddressLeaf,
+          destinationNetwork,
+          destinationAddressLeaf,
+          0,
+          message
+        )
+    )
+      .to.emit(mainnetPolygonZkEVMBridgeContract, "ClaimEvent")
+      .withArgs(index, originNetwork, tokenBrigdeContractTestnet.address, tokenBrigdeContractMainnet.address, 0);
+    console.log("balance of user[1] after tranfer at mainNet = ", Number(await tokenHub.balanceOf(user[1].address)));
+    console.log("balance of user[2] after tranfer at testNet = ", Number(await tokenSatellite.balanceOf(user[2].address)));
+  });
+
+  it(" tranfer token from network 0 to network 1 ", async () => {
+    // Create 2 user
+    let v = getRandomInt(10000, 100000);
+    await tokenHub.connect(deployer).transfer(user[1].address, BigInt(v));
+    let vv = getRandomInt(10000, 100000);
+    await tokenSatellite.connect(deployer).transfer(user[2].address, BigInt(vv));
+    // liqui to Bridge
+    await tokenHub.connect(deployer).transfer(tokenBrigdeContractMainnet.address, BigInt(10000));
+    await tokenSatellite.connect(deployer).transfer(tokenBrigdeContractTestnet.address, BigInt(10000));
+
+    console.log(`balance of user[1] before tranfer at mainNet = `, Number(await tokenHub.balanceOf(user[1].address)));
+    //console.log(`balance of bridge at mainNet = `, await tokenHub.balanceOf(tokenBrigdeContractMainnet.address));
+    console.log(`balance of user[2] before tranfer at testNet = `, Number(await tokenSatellite.balanceOf(user[2].address)));
+    //console.log(`balance of bridge at testNet = `, await tokenSatellite.balanceOf(tokenBrigdeContractTestnet.address));
+
+    const message = encodeMessageTranferData(user[2].address, 5000);
     const messageHash = ethers.utils.solidityKeccak256(["bytes"], [message]);
 
     const originAddressLeaf = tokenBrigdeContractMainnet.address;
@@ -201,7 +300,6 @@ describe(" Deploy", () => {
       messageHash
     );
 
-    
     const depositCount = await mainnetPolygonZkEVMBridgeContract.depositCount();
     const rollupExitRoot = await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot();
 
@@ -209,7 +307,7 @@ describe(" Deploy", () => {
     await tokenHub.connect(user[1]).approve(tokenBrigdeContractMainnet.address, 5000);
 
     // bridgeToken
-    await expect( tokenBrigdeContractMainnet.connect(user[1]).bridgeToken(user[2].address, 5000, true))
+    await expect(tokenBrigdeContractMainnet.connect(user[1]).bridgeToken(user[2].address, 5000, true))
       .to.emit(tokenBrigdeContractMainnet, `BridgeTokens`)
       .withArgs(user[2].address, 5000)
       .to.emit(mainnetPolygonZkEVMBridgeContract, `BridgeEvent`)
@@ -230,7 +328,7 @@ describe(" Deploy", () => {
     merkleTree.add(leafValue);
     const rootJSMainnet = merkleTree.getRoot();
 
-    // check merkle root with 
+    // check merkle root with
     const rootSCMainnet = await mainnetPolygonZkEVMBridgeContract.getDepositRoot();
     expect(rootSCMainnet).to.be.equal(rootJSMainnet);
 
@@ -239,43 +337,28 @@ describe(" Deploy", () => {
 
     // verify merkle proof
     expect(verifyMerkleProof(leafValue, proof, index, rootSCMainnet)).to.be.equal(true);
-    expect(
-      await mainnetPolygonZkEVMBridgeContract.verifyMerkleProof(
-        leafValue,
-        proof,
-        index,
-        rootSCMainnet
-      )
-    ).to.be.equal(true);
-    console.log("AFTER BRIDGE")
-    console.log(" mainnet =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
-    console.log(" rollup =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
+    expect(await mainnetPolygonZkEVMBridgeContract.verifyMerkleProof(leafValue, proof, index, rootSCMainnet)).to.be.equal(true);
+    // console.log("AFTER BRIDGE");
+    // console.log(" mainnet =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+    // console.log(" rollup =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
 
     let computedGlobalExitRoot = calculateGlobalExitRoot(rootJSMainnet, rollupExitRoot);
-    expect(computedGlobalExitRoot).to.be.equal(
-      await mainnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot()
-    );
-
-
-
-
+    expect(computedGlobalExitRoot).to.be.equal(await mainnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot());
 
     // update testNet Root by roll up account (relay will do this)
-    const rootJSTestnet = rootJSMainnet 
+    const rootJSTestnet = rootJSMainnet;
     const testnetExitRoot = await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot();
-     await expect(testnetPolygonZkEVMGlobalExitRoot.connect(rollup).updateExitRoot(rootJSTestnet))
-       .to.emit(testnetPolygonZkEVMGlobalExitRoot, "UpdateGlobalExitRoot")
-       .withArgs(testnetExitRoot, rootJSTestnet);
+    await expect(testnetPolygonZkEVMGlobalExitRoot.connect(rollup).updateExitRoot(rootJSTestnet))
+      .to.emit(testnetPolygonZkEVMGlobalExitRoot, "UpdateGlobalExitRoot")
+      .withArgs(testnetExitRoot, rootJSTestnet);
 
-      await testnetPolygonZkEVMBridgeContract.updateGlobalExitRoot();
+    await testnetPolygonZkEVMBridgeContract.updateGlobalExitRoot();
 
-   const rollupExitRootSC = await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot();
-       expect(rollupExitRootSC).to.be.equal(rootJSMainnet);
+    const rollupExitRootSC = await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot();
+    expect(rollupExitRootSC).to.be.equal(rootJSMainnet);
 
     computedGlobalExitRoot = calculateGlobalExitRoot(testnetExitRoot, rollupExitRootSC);
-    expect(computedGlobalExitRoot).to.be.equal(
-      await testnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot()
-    );
+    expect(computedGlobalExitRoot).to.be.equal(await testnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot());
 
     // verify merkle proof
     expect(verifyMerkleProof(leafValue, proof, index, rootJSTestnet)).to.be.equal(true);
@@ -284,34 +367,35 @@ describe(" Deploy", () => {
         leafValue,
         proof,
         index,
-        await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot(),
+        await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot()
       )
     ).to.be.equal(true);
 
-    console.log(" testnetExitRoot ", testnetExitRoot);
-    console.log("rollupExitRootSC ", rollupExitRootSC);
+    // console.log(" testnetExitRoot ", testnetExitRoot);
+    // console.log("rollupExitRootSC ", rollupExitRootSC);
 
-  console.log("BEFORE CLAIM")
-  console.log(" mainnet =  ", await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
-  console.log(" rollup =  ", await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
-  console.log(" i don't know verify on chain is true but claim is wrong ");
-    // claimMessage
+    // console.log("BEFORE CLAIM");
+    // console.log(" mainnet =  ", await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+    // console.log(" rollup =  ", await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
+    // console.log(" i don't know verify on chain is true but claim is wrong ");
+    // // claimMessage
     await expect(
-      await testnetPolygonZkEVMBridgeContract.connect(rollup).claimMessage(
-        proof,
-        index,
-        await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot(),
-        await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot(),
-        originNetwork,
-        originAddressLeaf,
-        destinationNetwork,
-        destinationAddressLeaf,
-        0,
-        message
-      )
+      await testnetPolygonZkEVMBridgeContract
+        .connect(rollup)
+        .claimMessage(
+          proof,
+          index,
+          await testnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot(),
+          await testnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot(),
+          originNetwork,
+          originAddressLeaf,
+          destinationNetwork,
+          destinationAddressLeaf,
+          0,
+          message
+        )
     )
-    .to.emit(mainnetPolygonZkEVMBridgeContract, "ClaimEvent")
-    .withArgs(index, 0, tokenBrigdeContractMainnet.address, tokenBrigdeContractTestnet.address, 0);
+      .to.emit(mainnetPolygonZkEVMBridgeContract, "ClaimEvent")
+      .withArgs(index, 0, tokenBrigdeContractMainnet.address, tokenBrigdeContractTestnet.address, 0);
   });
 });
-
