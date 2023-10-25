@@ -3,8 +3,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "./base/PolygonBridgeBase.sol";
 
 
-import "hardhat/console.sol";
-
 pragma solidity 0.8.17;
 
 
@@ -25,7 +23,6 @@ contract DAOToken is  ERC20Votes {
   ) internal override(ERC20Votes) {
   
     super._afterTokenTransfer(from, to, amount);
-    console.log(" from:", from);
   }
 
   function _mint(address to, uint256 amount) internal override(ERC20Votes) {

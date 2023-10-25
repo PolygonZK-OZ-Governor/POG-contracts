@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.17;
 
+
+
 import "@openzeppelin/contracts/utils/Timers.sol";
 import "@openzeppelin/contracts/utils/Checkpoints.sol";
 import "@openzeppelin/contracts/governance/utils/IVotes.sol";
@@ -51,6 +53,7 @@ contract DAOSatellite is DAOSetelliteMessenger {
 
     function _onCollectionRequestSent(bytes memory payload) internal override {
         uint256 proposalId = abi.decode(payload, (uint256));
+        
         ProposalVote storage votes = proposalVotes[proposalId];
         _bridgeVote(
             proposalId,
@@ -59,6 +62,7 @@ contract DAOSatellite is DAOSetelliteMessenger {
             votes.abstainVotes,
             true
         );
+        
         proposals[proposalId].voteFinished = true;
     }
 

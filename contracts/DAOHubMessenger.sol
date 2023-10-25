@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.17;
 
+
 import "./base/PolygonBridgeBase.sol";
 
 interface IMessageController {
@@ -102,6 +103,8 @@ contract DAOHubMessenger is PolygonBridgeBase {
             uint256 againstVotes,
             uint256 abstainVotes
         ) = abi.decode(payload, (uint256, uint256, uint256, uint256));
+       
+       
 
         controller.onReceiveSpokeVotingData(
             counterpartNetwork,

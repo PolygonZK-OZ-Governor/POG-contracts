@@ -34,6 +34,7 @@ abstract contract DAOSetelliteMessenger is PolygonBridgeBase {
         uint256 abstainVotes,
         bool forceUpdateGlobalExitRoot
     ) internal {
+        
         bytes memory votingPayload = abi.encode(
             proposalId,
             forVotes,
@@ -42,7 +43,8 @@ abstract contract DAOSetelliteMessenger is PolygonBridgeBase {
         );
         bytes memory messageData = abi.encode(
             BRIDGE_VOTE_SIG,
-            abi.encode(votingPayload)
+            //abi.encode(votingPayload)
+            votingPayload
         );
         // Send message data through the bridge
         _bridgeMessage(messageData, forceUpdateGlobalExitRoot);
