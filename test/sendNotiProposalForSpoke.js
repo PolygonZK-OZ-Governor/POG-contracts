@@ -4,8 +4,7 @@ const { getContractAddress } = require("@ethersproject/address");
 const { expect } = require("chai");
 
 const MerkleTreeBridge = require("@0xpolygonhermez/zkevm-commonjs").MTBridge;
-const { verifyMerkleProof, getLeafValue } =
-  require("@0xpolygonhermez/zkevm-commonjs").mtBridgeUtils;
+const { verifyMerkleProof, getLeafValue } = require("@0xpolygonhermez/zkevm-commonjs").mtBridgeUtils;
 
 describe(" Deploy", () => {
   let deployer;
@@ -43,42 +42,24 @@ describe(" Deploy", () => {
   let user = new Array(10);
   beforeEach("Deploy contracts", async () => {
     //deployer
-    [deployer, rollup, user[1], user[2], user[3], user[4], user[5], user[6], user[7], user[8]] =
-      await ethers.getSigners();
+    [deployer, rollup, user[1], user[2], user[3], user[4], user[5], user[6], user[7], user[8]] = await ethers.getSigners();
     console.log("deployer's address: ", deployer.address);
     for (let i = 1; i < 9; i++) console.log(`user ${i} address `, user[i].address);
     //=========DEPLOY BRIDGE =============//
 
     // deploy mainnetPolygonZkEVMBridge
     const mainnetPolygonZkEVMBridgeFactory = await ethers.getContractFactory("PolygonZkEVMBridge");
-
-    mainnetPolygonZkEVMBridgeContract = await upgrades.deployProxy(
-      mainnetPolygonZkEVMBridgeFactory,
-      [],
-      { initializer: false }
-    );
-    console.log(
-      " mainnetPolygonZkEVMBridgeContract's address: ",
-      mainnetPolygonZkEVMBridgeContract.address
-    );
+    mainnetPolygonZkEVMBridgeContract = await upgrades.deployProxy(mainnetPolygonZkEVMBridgeFactory, [], { initializer: false });
+    console.log(" mainnetPolygonZkEVMBridgeContract's address: ", mainnetPolygonZkEVMBridgeContract.address);
     // deploy global exit root manager
-    const mainnetPolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory(
-      "PolygonZkEVMGlobalExitRoot"
-    );
+    const mainnetPolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory("PolygonZkEVMGlobalExitRoot");
     mainnetPolygonZkEVMGlobalExitRoot = await mainnetPolygonZkEVMGlobalExitRootFactory.deploy(
       rollup.address,
       mainnetPolygonZkEVMBridgeContract.address
     );
 
-    console.log(
-      " mainnetPolygonZKEVMGlobalExitRoot's address: ",
-      mainnetPolygonZkEVMGlobalExitRoot.address
-    );
-    await mainnetPolygonZkEVMBridgeContract.initialize(
-      networkIDMainnet,
-      mainnetPolygonZkEVMGlobalExitRoot.address,
-      mainnetPolygonZkEVMAddress
-    );
+    console.log(" mainnetPolygonZKEVMGlobalExitRoot's address: ", mainnetPolygonZkEVMGlobalExitRoot.address);
+    await mainnetPolygonZkEVMBridgeContract.initialize(networkIDMainnet, mainnetPolygonZkEVMGlobalExitRoot.address, mainnetPolygonZkEVMAddress);
 
     //===================================//
     //DAOtoken
@@ -111,12 +92,7 @@ describe(" Deploy", () => {
 
     //DAOHubMessenger
     const DAOHubMessengerFactory = await ethers.getContractFactory("DAOHubMessenger");
-    DAOHubMessenger = await DAOHubMessengerFactory.deploy(
-      mainnetPolygonZkEVMBridgeContract.address,
-      predictDAOSatellite,
-      1,
-      DAOHub.address
-    );
+    DAOHubMessenger = await DAOHubMessengerFactory.deploy(mainnetPolygonZkEVMBridgeContract.address, predictDAOSatellite, 1, DAOHub.address);
     console.log(" daoHubMessenger's address: ", await DAOHubMessenger.address);
     console.log("                counter address: ", await DAOHubMessenger.counterpartContract());
     console.log("                counter network: ", await DAOHubMessenger.counterpartNetwork());
@@ -142,7 +118,7 @@ describe(" Deploy", () => {
     box = await boxFactory.deploy();
   });
 
-  it(" bridge proposal ", async () => {
+  it(" bridge proposal at network 0", async () => {
     //console.log(await tokenHub.balanceOf(deployer));
 
     for (let i = 1; i < 5; i++) {
@@ -152,13 +128,8 @@ describe(" Deploy", () => {
       await tokenSatellite.connect(deployer).transfer(user[4 + i].address, BigInt(vv));
     }
 
-    for (let i = 1; i < 5; i++)
-      console.log(`balance of user[${i}] at mainNet = `, await tokenHub.balanceOf(user[i].address));
-    for (let i = 1; i < 5; i++)
-      console.log(
-        `balance of user[${4 + i}] at spokeNet = `,
-        await tokenSatellite.balanceOf(user[4 + i].address)
-      );
+    for (let i = 1; i < 5; i++) console.log(`balance of user[${i}] at mainNet = `, await tokenHub.balanceOf(user[i].address));
+    for (let i = 1; i < 5; i++) console.log(`balance of user[${4 + i}] at spokeNet = `, await tokenSatellite.balanceOf(user[4 + i].address));
 
     console.log(" box value = ", await box.retrieve());
 
@@ -216,27 +187,17 @@ describe(" Deploy", () => {
 
     // verify merkle proof
     expect(verifyMerkleProof(leafValue, proof, index, rootSCMainnet)).to.be.equal(true);
-    expect(
-      await mainnetPolygonZkEVMBridgeContract.verifyMerkleProof(
-        leafValue,
-        proof,
-        index,
-        rootSCMainnet
-      )
-    ).to.be.equal(true);
+    expect(await mainnetPolygonZkEVMBridgeContract.verifyMerkleProof(leafValue, proof, index, rootSCMainnet)).to.be.equal(true);
 
     const computedGlobalExitRoot = calculateGlobalExitRoot(rootJSMainnet, rollupExitRoot);
-    expect(computedGlobalExitRoot).to.be.equal(
-      await mainnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot()
-    );
+    expect(computedGlobalExitRoot).to.be.equal(await mainnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot());
 
-    console.log("AFTER BRIDGE")
+    console.log("AFTER BRIDGE");
     console.log(" mainnet =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
     console.log(" rollup =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
-
   });
 
-  it("should claim proposal", async () => {
+  it("should claim proposal at network 0", async () => {
     const height = 32;
     const merkleTree = new MerkleTreeBridge(height);
 
@@ -249,15 +210,7 @@ describe(" Deploy", () => {
     const destinationAddressLeaf = DAOSatellite.address;
 
     console.log(" messageHash = ", messageHash);
-    const leafValue = getLeafValue(
-      1,
-      originNetwork,
-      originAddressLeaf,
-      destinationNetwork,
-      destinationAddressLeaf,
-      0,
-      messageHash
-    );
+    const leafValue = getLeafValue(1, originNetwork, originAddressLeaf, destinationNetwork, destinationAddressLeaf, 0, messageHash);
 
     merkleTree.add(leafValue);
     const rootJSRollup = merkleTree.getRoot();
@@ -274,9 +227,7 @@ describe(" Deploy", () => {
     expect(rollupExitRootSC).to.be.equal(rootJSRollup);
 
     const computedGlobalExitRoot = calculateGlobalExitRoot(mainnetExitRoot, rollupExitRootSC);
-    expect(computedGlobalExitRoot).to.be.equal(
-      await mainnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot()
-    );
+    expect(computedGlobalExitRoot).to.be.equal(await mainnetPolygonZkEVMGlobalExitRoot.getLastGlobalExitRoot());
 
     // check merkle proof
     const proof = merkleTree.getProofTreeByIndex(0);
@@ -284,23 +235,16 @@ describe(" Deploy", () => {
 
     // verify merkle proof
     expect(verifyMerkleProof(leafValue, proof, index, rootJSRollup)).to.be.equal(true);
-    expect(
-      await mainnetPolygonZkEVMBridgeContract.verifyMerkleProof(
-        leafValue,
-        proof,
-        index,
-        rootJSRollup
-      )
-    ).to.be.equal(true);
+    expect(await mainnetPolygonZkEVMBridgeContract.verifyMerkleProof(leafValue, proof, index, rootJSRollup)).to.be.equal(true);
     console.log(" check isProposal ID 1 = ", await DAOSatellite.isProposal(1n));
     //claim message
 
-      console.log(" mainnetExitRoot = ", mainnetExitRoot);
-      console.log("rollupExitRootSC = ",rollupExitRootSC);
+    console.log(" mainnetExitRoot = ", mainnetExitRoot);
+    console.log("rollupExitRootSC = ", rollupExitRootSC);
 
-      console.log("BEFORE CLAIM")
-      console.log(" mainnet =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
-      console.log(" rollup =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
+    console.log("BEFORE CLAIM");
+    console.log(" mainnet =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastMainnetExitRoot());
+    console.log(" rollup =  ", await mainnetPolygonZkEVMGlobalExitRoot.lastRollupExitRoot());
 
     await expect(
       await mainnetPolygonZkEVMBridgeContract.claimMessage(

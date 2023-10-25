@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.17;
 
+
 import "@openzeppelin/contracts/governance/Governor.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
@@ -85,6 +86,8 @@ contract DAOHub is
         return super.proposalThreshold();
     }
 
+
+
     /**
      * @dev Hook before execution is triggered.
      */
@@ -147,8 +150,10 @@ contract DAOHub is
         bytes[] memory calldatas,
         string memory description
     ) public override returns (uint256) {
+        
         uint256 proposalId = super.propose(targets, values, calldatas, description);
         for (uint16 i = 0; i < spokeNetworks.length; i++) {
+          
             messengers[spokeNetworks[i]].bridgeProposal(
                 proposalId,
                 block.timestamp,
@@ -180,5 +185,6 @@ contract DAOHub is
 
     function addSpoke(uint32 spokeNetwork, DAOHubMessenger messengerAddress) public {
         messengers[spokeNetwork] = messengerAddress;
+        spokeNetworks.push(spokeNetwork);
     } 
 }

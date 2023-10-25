@@ -64,7 +64,7 @@ contract DAOHubMessenger is PolygonBridgeBase {
 
         // Send message data through the bridge
         _bridgeMessage(messageData, forceUpdateGlobalExitRoot);
-
+        
         emit RequestCollection(proposalId);
     }
 

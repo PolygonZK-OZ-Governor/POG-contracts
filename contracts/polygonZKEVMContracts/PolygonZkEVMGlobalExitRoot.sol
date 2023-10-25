@@ -85,4 +85,25 @@ contract PolygonZkEVMGlobalExitRoot is IPolygonZkEVMGlobalExitRoot {
                 lastRollupExitRoot
             );
     }
+
+    function updateMainnetRootForTesting(bytes32 newRoot) public returns (bytes32) {
+        bytes32 cacheLastRollupExitRoot = lastRollupExitRoot;
+        bytes32 cacheLastMainnetExitRoot = lastMainnetExitRoot;
+
+        lastMainnetExitRoot = newRoot;
+        cacheLastMainnetExitRoot = newRoot;
+
+        bytes32 newGlobalExitRoot = GlobalExitRootLib.calculateGlobalExitRoot(
+            cacheLastMainnetExitRoot,
+            cacheLastRollupExitRoot
+        );
+        if (globalExitRootMap[newGlobalExitRoot] == 0) {
+            globalExitRootMap[newGlobalExitRoot] = block.timestamp;
+            emit UpdateGlobalExitRoot(
+                cacheLastMainnetExitRoot,
+                cacheLastRollupExitRoot
+            );
+        }
+        return lastMainnetExitRoot;
+    }
 }

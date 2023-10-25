@@ -46,7 +46,6 @@ describe("Deploy", () => {
     [deployer, rollup, rolluptestnet, user[1], user[2], user[3], user[4], user[5], user[6], user[7], user[8]] = await ethers.getSigners();
 
     const PolygonZkEVMBridgeFactory = await ethers.getContractFactory("PolygonZkEVMBridge");
-
     mainnetPolygonZkEVMBridgeContract = await upgrades.deployProxy(PolygonZkEVMBridgeFactory, [], {
       initializer: false,
     });
