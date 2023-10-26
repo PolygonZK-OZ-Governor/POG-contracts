@@ -56,7 +56,9 @@ contract DAOHub is
     function quorum(
         uint256
     ) public pure override returns (uint256) {
-        return 1e18;
+        //return 1e18;
+        // edit here
+        return 0;
     }
 
     function votingDelay()

@@ -156,7 +156,7 @@ describe("simulation on hardhat enviroiment", () => {
     box = await boxFactory.deploy();
   });
 
-  it(" Create proposal ", async () => {
+  it(" Create proposal, votes, waits, queues, and then execute", async () => {
     let ABI = ["function store(uint256 newValue)"];
     let iBox = new ethers.utils.Interface(ABI);
     const tx = iBox.encodeFunctionData("store", [77n]);
@@ -203,14 +203,14 @@ describe("simulation on hardhat enviroiment", () => {
   });
 
   it("Vote on multi chain", async () => {
-    console.log(" balane user0 in mainnet = ", await tokenMainnet.balanceOf(user[0].address));
-    console.log(" state = ", await DAOMainnet.state(proposalId));
+    //console.log(" balane user0 in mainnet = ", await tokenMainnet.balanceOf(user[0].address));
+    //console.log(" state = ", await DAOMainnet.state(proposalId));
     //user0 vote on Mainnet
     await expect(await DAOMainnet.connect(user[0]).castVote(proposalId, 1))
       .to.be.emit(DAOMainnet, "VoteCast")
       .withArgs(user[0].address, proposalId, 1, await tokenMainnet.balanceOf(user[0].address), "");
 
-    console.log(" value vote of user4 in testnet = ", await tokenMainnet.getVotes(user[4].address));
+    //console.log(" value vote of user4 in testnet = ", await tokenTestnet.getVotes(user[4].address));
     //user4 vote on Testnet
     await expect(await DAOTestnet.connect(user[4]).castVote(proposalId, 1))
       .to.be.emit(DAOTestnet, "VoteCasted")
@@ -267,8 +267,6 @@ describe("simulation on hardhat enviroiment", () => {
     merkleTreeTestnet.add(leafValue);
 
     // merkleTreeMainnet.add(leafValue);
-    console.log(" root = ", merkleTreeTestnet.getRoot());
-    console.log(" root = ", merkleTreeMainnet.getRoot());
 
     await PZKRootMainnet.connect(admin).updateExitRoot(merkleTreeTestnet.getRoot());
     proof = merkleTreeTestnet.getProofTreeByIndex(0);
@@ -293,8 +291,6 @@ describe("simulation on hardhat enviroiment", () => {
     //finish phase collection
 
     await DAOMainnet.finishCollectionPhase(proposalId);
-    console.log(" kka", await ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Proposal #1 set 77 in the Box!")));
-    console.log(" state = ", await DAOMainnet.state(proposalId));
 
     await DAOMainnet.execute(
       [box.address],
@@ -302,11 +298,6 @@ describe("simulation on hardhat enviroiment", () => {
       [calldata],
       await ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Proposal #1 set 77 in the Box!"))
     );
-  });
-
-  it(" votes, waits, queues, and then execute", async () => {
-    // propose
-    //vote
-    //queue & execute
+    expect(await box.retrieve()).to.be.equal(77);
   });
 });

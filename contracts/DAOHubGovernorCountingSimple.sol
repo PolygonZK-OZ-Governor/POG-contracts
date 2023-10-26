@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.17;
 
+
+
 import "@openzeppelin/contracts/governance/Governor.sol";
 
 abstract contract DAOHubGovernorCountingSimple is Governor {
@@ -99,7 +101,7 @@ abstract contract DAOHubGovernorCountingSimple is Governor {
             abstainVotes += spokeVote.abstainVotes;
             forVotes += spokeVote.forVotes;
         }
-
+     
         return quorum(proposalSnapshot(proposalId)) <= forVotes + abstainVotes;
     }
 
@@ -120,7 +122,6 @@ abstract contract DAOHubGovernorCountingSimple is Governor {
             againstVotes += spokeVote.againstVotes;
             forVotes += spokeVote.forVotes;
         }
-
         return forVotes > againstVotes;
     }
 
