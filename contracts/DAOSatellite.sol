@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-
+import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/utils/Timers.sol";
 import "@openzeppelin/contracts/utils/Checkpoints.sol";
@@ -25,6 +25,7 @@ contract DAOSatellite is DAOSetelliteMessenger {
 
     struct RemoteProposal {
         uint256 localVoteStart;
+        uint256 deadline;
         bool voteFinished;
     }
 
@@ -53,29 +54,21 @@ contract DAOSatellite is DAOSetelliteMessenger {
 
     function _onCollectionRequestSent(bytes memory payload) internal override {
         uint256 proposalId = abi.decode(payload, (uint256));
-        
         ProposalVote storage votes = proposalVotes[proposalId];
-        _bridgeVote(
-            proposalId,
-            votes.forVotes,
-            votes.againstVotes,
-            votes.abstainVotes,
-            true
-        );
-        
+        _bridgeVote(proposalId, votes.forVotes, votes.againstVotes, votes.abstainVotes, true);
+
         proposals[proposalId].voteFinished = true;
     }
 
     function _onNewProposal(bytes memory payload) internal override {
-        (uint256 proposalId, uint256 proposalStart) = abi.decode(
+        (uint256 proposalId, uint256 proposalStart, uint256 snapshot, uint256 deadline) = abi.decode(
             payload,
-            (uint256, uint256)
+            (uint256, uint256, uint256, uint256)
         );
 
         uint256 cutoffBlockEstimation = 0;
         if (proposalStart < block.timestamp) {
-            uint256 blockAdjustment = (block.timestamp - proposalStart) /
-                targetSecondsPerBlock;
+            uint256 blockAdjustment = (block.timestamp - proposalStart) / targetSecondsPerBlock;
             if (blockAdjustment < block.number) {
                 cutoffBlockEstimation = block.number - blockAdjustment;
             } else {
@@ -84,32 +77,27 @@ contract DAOSatellite is DAOSetelliteMessenger {
         } else {
             cutoffBlockEstimation = block.number;
         }
-        proposals[proposalId] = RemoteProposal(cutoffBlockEstimation, false);
+
+        proposals[proposalId] = RemoteProposal(
+            cutoffBlockEstimation,
+            block.number + (deadline / targetSecondsPerBlock),
+            false
+        );
         emit NewProposal(proposalId, cutoffBlockEstimation);
     }
 
-    function castVote(
-        uint256 proposalId,
-        uint8 support
-    ) public virtual returns (uint256 balance) {
+    function castVote(uint256 proposalId, uint8 support) public virtual returns (uint256 balance) {
         RemoteProposal storage proposal = proposals[proposalId];
+        require(proposal.deadline >= block.number, "Governor: vote not currently active");
         require(!proposal.voteFinished, "The voting is unfinished");
         require(isProposal(proposalId), "The voting is not existent");
-        uint256 weight = token.getPastVotes(
-            msg.sender,
-            proposal.localVoteStart
-        );
+        uint256 weight = token.getPastVotes(msg.sender, proposal.localVoteStart);
         _countVote(proposalId, msg.sender, support, weight);
         emit VoteCasted(proposalId, msg.sender, support, weight);
         return weight;
     }
 
-    function _countVote(
-        uint256 proposalId,
-        address account,
-        uint8 support,
-        uint256 weight
-    ) internal virtual {
+    function _countVote(uint256 proposalId, address account, uint8 support, uint256 weight) internal virtual {
         ProposalVote storage proposalVote = proposalVotes[proposalId];
 
         require(!proposalVote.hasVoted[account], "vote already cast");

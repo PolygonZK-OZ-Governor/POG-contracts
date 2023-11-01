@@ -41,10 +41,7 @@ async function main() {
   const erc20MainnetToken = await erc20MainnetTokenFactory.deploy("DAOToken", "DTK");
   await erc20MainnetToken.deployed();
   console.log("erc20MainnetTokenFactory deployed", erc20MainnetToken.address);
-
-  //
   const nonceZkevm = Number(await deployerZkEVM.getTransactionCount());
-
   const predictERC20BridgeZkEVM = ethers.utils.getContractAddress({ from: deployer.address, nonce: nonceZkevm });
   const predictErc20zkEVMToken = ethers.utils.getContractAddress({ from: deployer.address, nonce: nonceZkevm + 1 });
 

@@ -15,17 +15,12 @@ abstract contract DAOSetelliteMessenger is PolygonBridgeBase {
     bytes4 constant BRIDGE_VOTE_SIG = 0xcf53ead7;
 
     event BridgeVote(uint256, uint256, uint256, uint256);
+
     constructor(
         IPolygonZkEVMBridge _polygonZkEVMBridge,
         address _counterpartContract,
         uint32 _counterpartNetwork
-    )
-        PolygonBridgeBase(
-            _polygonZkEVMBridge,
-            _counterpartContract,
-            _counterpartNetwork
-        )
-    {}
+    ) PolygonBridgeBase(_polygonZkEVMBridge, _counterpartContract, _counterpartNetwork) {}
 
     function _bridgeVote(
         uint256 proposalId,
@@ -34,13 +29,7 @@ abstract contract DAOSetelliteMessenger is PolygonBridgeBase {
         uint256 abstainVotes,
         bool forceUpdateGlobalExitRoot
     ) internal {
-        
-        bytes memory votingPayload = abi.encode(
-            proposalId,
-            forVotes,
-            againstVotes,
-            abstainVotes
-        );
+        bytes memory votingPayload = abi.encode(proposalId, forVotes, againstVotes, abstainVotes);
         bytes memory messageData = abi.encode(
             BRIDGE_VOTE_SIG,
             //abi.encode(votingPayload)
@@ -57,10 +46,9 @@ abstract contract DAOSetelliteMessenger is PolygonBridgeBase {
 
         if (functionSig == REQUEST_COLLECTION_SIG) {
             _onCollectionRequestSent(payload);
-        }
-        else if (functionSig == BRIDGE_PROPOSAL_SIG) {
+        } else if (functionSig == BRIDGE_PROPOSAL_SIG) {
             _onNewProposal(payload);
-        }else {
+        } else {
             revert("Operation is not supported");
         }
     }

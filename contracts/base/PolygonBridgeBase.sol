@@ -64,7 +64,7 @@ abstract contract PolygonBridgeBase {
         address originAddress,
         uint32 originNetwork,
         bytes memory data
-    ) external payable {
+    ) external {
         // Can only be called by the bridge
         require(
             msg.sender == address(polygonZkEVMBridge),

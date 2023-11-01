@@ -47,6 +47,9 @@ describe("simulation on hardhat enviroiment", () => {
 
     let calldata;
 
+    let countMainnetLeaf = 0;
+    let countTestnetLeaf = 0;
+
     it("Setup", async () => {
         [deployer, admin, user[0], user[1], user[2], user[3], user[4], user[5], user[6], user[7]] =
             await ethers.getSigners();
@@ -116,7 +119,7 @@ describe("simulation on hardhat enviroiment", () => {
             DAOHubMessenger.address,
             networkIDMainnet,
             tokenTestnet.address,
-            1n
+            12n
         );
         expect(predictDAOtestnet).to.be.equal(DAOTestnet.address);
 
@@ -148,41 +151,13 @@ describe("simulation on hardhat enviroiment", () => {
         const receiptProposalTx = await proposalTx.wait();
         console.log(" ProposalId =  ", receiptProposalTx.events[0].args.proposalId.toString());
         proposalId = receiptProposalTx.events[0].args.proposalId;
-        receipt = await PZKbridgeMainnet.queryFilter("BridgeEvent", 0, await ethers.provider.getBlockNumber());
-        const leafValue = getLeafValue(
-            receipt[0].args.leafType,
-            receipt[0].args.originNetwork,
-            receipt[0].args.originAddress,
-            receipt[0].args.destinationNetwork,
-            receipt[0].args.destinationAddress,
-            receipt[0].args.amount,
-            ethers.utils.keccak256(receipt[0].args.metadata)
-        );
         merkleTreeMainnet = new MerkleTreeBridge(32);
         merkleTreeTestnet = new MerkleTreeBridge(32);
-        merkleTreeMainnet.add(leafValue);
-
-        const proof = merkleTreeMainnet.getProofTreeByIndex(0);
-        await PZKRootTestnet.updateMainnetRootForTesting(await PZKRootMainnet.lastMainnetExitRoot());
-        await expect(
-            await PZKbridgeTestnet.claimMessage(
-                proof,
-                0, //index
-                await PZKRootTestnet.lastMainnetExitRoot(),
-                await PZKRootTestnet.lastRollupExitRoot(),
-                receipt[0].args.originNetwork,
-                receipt[0].args.originAddress,
-                receipt[0].args.destinationNetwork,
-                receipt[0].args.destinationAddress,
-                0,
-                receipt[0].args.metadata
-            )
-        )
-            .to.emit(PZKbridgeTestnet, "ClaimEvent")
-            .withArgs(0, 0, DAOHubMessenger.address, DAOTestnet.address, 0)
-            .to.emit(DAOTestnet, "NewProposal")
-            .withArgs(proposalId, 34);
-        //check new proposal
+        await bridgeMainnetToTestnet();
+        console.log(" is proposal ", await DAOTestnet.isProposal(proposalId));
+        console.log(" proposal snapshot = ", await DAOMainnet.proposalSnapshot(proposalId));
+        console.log(" proposal deadline = ", await DAOMainnet.proposalDeadline(proposalId));
+        console.log(" block now = ", await ethers.provider.getBlockNumber());
     });
 
     it("Vote on multi chain", async () => {
@@ -195,78 +170,31 @@ describe("simulation on hardhat enviroiment", () => {
         await expect(await DAOTestnet.connect(user[4]).castVote(proposalId, 1))
             .to.be.emit(DAOTestnet, "VoteCasted")
             .withArgs(proposalId, user[4].address, 1, await tokenTestnet.balanceOf(user[4].address));
+    });
+    it("Vote in hub chain after deadline", async () => {
+        await mine(100);
+        await expect(DAOMainnet.connect(user[1]).castVote(proposalId, 1)).to.be.revertedWith(
+            "Governor: vote not currently active"
+        );
+    });
 
-        await ethers.provider.send("evm_setNextBlockTimestamp", [1625097600]);
+    it("Vote in spoke chain after deadline", async () => {
+        await mine(100);
+        await expect(DAOTestnet.connect(user[5]).castVote(proposalId, 1)).to.be.revertedWith(
+            "Governor: vote not currently active"
+        );
+    });
+
+    it("Collect vote", async () => {
         await mine(1000);
         //collect vote from testnet to mainnet
         await DAOMainnet.requestCollections(proposalId, true);
-        bridgeMainnetToTestnet();
-        receipt = await PZKbridgeMainnet.queryFilter("BridgeEvent", 1000, await ethers.provider.getBlockNumber());
 
-        //console.log(receipt);
-        let leafValue = getLeafValue(
-            receipt[0].args.leafType,
-            receipt[0].args.originNetwork,
-            receipt[0].args.originAddress,
-            receipt[0].args.destinationNetwork,
-            receipt[0].args.destinationAddress,
-            receipt[0].args.amount,
-            ethers.utils.keccak256(receipt[0].args.metadata)
-        );
-        merkleTreeMainnet.add(leafValue);
+        //Bridge
+        await bridgeMainnetToTestnet();
+        await bridgeTestnetToMainnet();
 
-        let proof = merkleTreeMainnet.getProofTreeByIndex(1);
-        await PZKRootTestnet.updateMainnetRootForTesting(await PZKRootMainnet.lastMainnetExitRoot());
-        await expect(
-            await PZKbridgeTestnet.claimMessage(
-                proof,
-                1, //index
-                await PZKRootTestnet.lastMainnetExitRoot(),
-                await PZKRootTestnet.lastRollupExitRoot(),
-                receipt[0].args.originNetwork,
-                receipt[0].args.originAddress,
-                receipt[0].args.destinationNetwork,
-                receipt[0].args.destinationAddress,
-                0,
-                receipt[0].args.metadata
-            )
-        )
-            .to.emit(PZKbridgeTestnet, "ClaimEvent")
-            .withArgs(1, 0, DAOHubMessenger.address, DAOTestnet.address, 0);
-        receipt = await PZKbridgeTestnet.queryFilter("BridgeEvent", 1000, await ethers.provider.getBlockNumber());
-
-        leafValue = getLeafValue(
-            receipt[0].args.leafType,
-            receipt[0].args.originNetwork,
-            receipt[0].args.originAddress,
-            receipt[0].args.destinationNetwork,
-            receipt[0].args.destinationAddress,
-            receipt[0].args.amount,
-            ethers.utils.keccak256(receipt[0].args.metadata)
-        );
-        merkleTreeTestnet.add(leafValue);
-
-        await PZKRootMainnet.connect(admin).updateExitRoot(merkleTreeTestnet.getRoot());
-        proof = merkleTreeTestnet.getProofTreeByIndex(0);
-
-        await expect(
-            await PZKbridgeMainnet.claimMessage(
-                proof,
-                0,
-                await PZKRootMainnet.lastMainnetExitRoot(),
-                await PZKRootMainnet.lastRollupExitRoot(),
-                receipt[0].args.originNetwork,
-                receipt[0].args.originAddress,
-                receipt[0].args.destinationNetwork,
-                receipt[0].args.destinationAddress,
-                0,
-                receipt[0].args.metadata
-            )
-        )
-            .to.emit(PZKbridgeMainnet, "ClaimEvent")
-            .withArgs(0, 1, DAOTestnet.address, DAOHubMessenger.address, 0);
         //finish phase collection
-        await DAOMainnet.finishCollectionPhase(proposalId);
 
         await DAOMainnet.execute(
             [box.address],
@@ -278,10 +206,65 @@ describe("simulation on hardhat enviroiment", () => {
     });
 
     async function bridgeMainnetToTestnet() {
-        let mainTree = new MerkleTreeBridge(32);
         let receipt = await PZKbridgeMainnet.queryFilter("BridgeEvent", 0, await ethers.provider.getBlockNumber());
-        receipt.forEach((element) => {
-            console.log("Element = ", element);
-        });
+        var newLeaf = getLeafValue(
+            receipt[receipt.length - 1].args.leafType,
+            receipt[receipt.length - 1].args.originNetwork,
+            receipt[receipt.length - 1].args.originAddress,
+            receipt[receipt.length - 1].args.destinationNetwork,
+            receipt[receipt.length - 1].args.destinationAddress,
+            receipt[receipt.length - 1].args.amount,
+            ethers.utils.keccak256(receipt[receipt.length - 1].args.metadata)
+        );
+        merkleTreeMainnet.add(newLeaf);
+        let proof = merkleTreeMainnet.getProofTreeByIndex(receipt.length - 1);
+        await PZKRootTestnet.updateMainnetRootForTesting(await PZKRootMainnet.lastMainnetExitRoot());
+        await PZKbridgeTestnet.claimMessage(
+            proof,
+            receipt.length - 1,
+            await PZKRootTestnet.lastMainnetExitRoot(),
+            await PZKRootTestnet.lastRollupExitRoot(),
+            receipt[receipt.length - 1].args.originNetwork,
+            receipt[receipt.length - 1].args.originAddress,
+            receipt[receipt.length - 1].args.destinationNetwork,
+            receipt[receipt.length - 1].args.destinationAddress,
+            receipt[receipt.length - 1].args.amount,
+            receipt[receipt.length - 1].args.metadata
+        );
+    }
+
+    async function bridgeTestnetToMainnet() {
+        let receipt = await PZKbridgeTestnet.queryFilter("BridgeEvent", 0, await ethers.provider.getBlockNumber());
+
+        let newLeaf = getLeafValue(
+            receipt[receipt.length - 1].args.leafType,
+            receipt[receipt.length - 1].args.originNetwork,
+            receipt[receipt.length - 1].args.originAddress,
+            receipt[receipt.length - 1].args.destinationNetwork,
+            receipt[receipt.length - 1].args.destinationAddress,
+            receipt[receipt.length - 1].args.amount,
+            ethers.utils.keccak256(receipt[receipt.length - 1].args.metadata)
+        );
+        merkleTreeTestnet.add(newLeaf);
+
+        await PZKRootMainnet.connect(admin).updateExitRoot(merkleTreeTestnet.getRoot());
+        proof = merkleTreeTestnet.getProofTreeByIndex(receipt.length - 1);
+
+        await expect(
+            await PZKbridgeMainnet.claimMessage(
+                proof,
+                receipt.length - 1,
+                await PZKRootMainnet.lastMainnetExitRoot(),
+                await PZKRootMainnet.lastRollupExitRoot(),
+                receipt[receipt.length - 1].args.originNetwork,
+                receipt[receipt.length - 1].args.originAddress,
+                receipt[receipt.length - 1].args.destinationNetwork,
+                receipt[receipt.length - 1].args.destinationAddress,
+                0,
+                receipt[receipt.length - 1].args.metadata
+            )
+        )
+            .to.emit(PZKbridgeMainnet, "ClaimEvent")
+            .withArgs(0, 1, DAOTestnet.address, DAOHubMessenger.address, 0);
     }
 });
