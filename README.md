@@ -1,16 +1,37 @@
 # POG-contracts
+
 The smart contract system of the PolygonZKEVM Openzeppelin-based governor
 
-tai vi trong example chung no xai chung 1 bridge o mainnet, o phan nay em thu viet 2 cai cau o 2 networkID khac nhau va chay thu thi 
-loi nam o phan verify, em nghi la brighe thi chung phai tu dong update (relayer), tuc la khi minh hoat dong
-khi minh bridge message thi mainnetRoot cua chain do se duoc update
-khi minh su dung update RollUp thi RollupRoot cua chain do se duoc update
-tuy nhien khi minh su dung claimMessage o testnet thi se su dung mainnetRoot cua testnet de verify chu k phai RollUp. em dang nghi co the la cau 1 chieu :v
+# Contract
 
-kiểu để claim được 1 message thì 
-destinationNetWork phải = với netWorkID của cầu
+## polygonZKEVMContract
 
-mà networkID của cầu = mainnet thì nó sẽ lấy root là rollup còn k nó sẽ lấy là mainnet
-tuy nhiên mainnet chỉ có thể cập nhật qua smartContract Bridge khi mình bridgeMessge 
-còn RollUp có thể cập nhật qua tài khoản tạo cầu
+-   polygonZkEVMContract are contracts that belong to the bridge part of the Polygon network, here we use it for testing on the Hardhat environment
 
+## DAO Contract
+
+### DAOHub
+
+Hub Governor
+
+### DAOSatellite
+
+SmartContract branches at spokeNetworks with the main function of receiving notifications from the Hub Governor, confirming and synthesizing votes on that network and bridging to the main network after the vote ends.
+
+### DAOHubMessenger
+
+Has the function of bridging DAO messages to DAOSatellites in other spoke networks
+
+-   #### bridgeProposal
+-   #### \_onMessageReceived
+-   #### \_onReceiveSpokeVotingData
+
+### DAOSatelliteMessenger
+
+Interact with messages sent from the other bridge
+
+## Token Contract
+
+### ERC20BridgeNativeChain
+
+Organize bridge token function between chains

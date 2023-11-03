@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import "./base/PolygonBridgeBase.sol";
 
 pragma solidity 0.8.17;
 

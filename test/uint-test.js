@@ -47,23 +47,22 @@ describe("simulation on hardhat enviroiment", () => {
 
     let calldata;
 
-    let countMainnetLeaf = 0;
-    let countTestnetLeaf = 0;
-
     it("Setup", async () => {
+        merkleTreeMainnet = new MerkleTreeBridge(32);
+        merkleTreeTestnet = new MerkleTreeBridge(32);
         [deployer, admin, user[0], user[1], user[2], user[3], user[4], user[5], user[6], user[7]] =
             await ethers.getSigners();
 
         //bridgeMainnet
         const PZKBridgeFactory = await ethers.getContractFactory("PolygonZkEVMBridge");
         PZKbridgeMainnet = await upgrades.deployProxy(PZKBridgeFactory, [], { initializer: false });
-        const PZkRootMainnetFactory = await ethers.getContractFactory("PolygonZkEVMGlobalExitRoot");
+        const PZkRootMainnetFactory = await ethers.getContractFactory("PolygonZkEVMGlobalExitRootTest");
         PZKRootMainnet = await PZkRootMainnetFactory.deploy(admin.address, PZKbridgeMainnet.address);
         await PZKbridgeMainnet.initialize(networkIDMainnet, PZKRootMainnet.address, mainnetPolygonZkEVMAddress);
 
         //bridgeTestnet
         PZKbridgeTestnet = await upgrades.deployProxy(PZKBridgeFactory, [], { initializer: false });
-        const PZKRootTestnetFactory = await ethers.getContractFactory("PolygonZkEVMGlobalExitRoot");
+        const PZKRootTestnetFactory = await ethers.getContractFactory("PolygonZkEVMGlobalExitRootTest");
         PZKRootTestnet = await PZKRootTestnetFactory.deploy(admin.address, PZKbridgeTestnet.address);
         await PZKbridgeTestnet.initialize(networkIDTestnet, PZKRootTestnet.address, mainnetPolygonZkEVMAddress);
 
@@ -96,7 +95,7 @@ describe("simulation on hardhat enviroiment", () => {
         );
 
         //DAO Mainnet
-        const DAOFactory = await ethers.getContractFactory("DAOHub");
+        const DAOFactory = await ethers.getContractFactory("DAOHubTest");
         DAOMainnet = await DAOFactory.deploy(tokenMainnet.address, [], []);
 
         //DAO Mainnet messenger
@@ -142,22 +141,41 @@ describe("simulation on hardhat enviroiment", () => {
         box = await boxFactory.deploy();
     });
 
-    it(" Create proposal, votes, waits, queues, and then execute", async () => {
+    it("tranfer ERC-20 from mainnet to testnet", async () => {
+        let before = await tokenTestnet.balanceOf(user[4].address);
+        await tokenMainnet.connect(user[0]).approve(tokenBridgeMainnet.address, 1000);
+        await expect(tokenBridgeMainnet.connect(user[0]).bridgeToken(user[4].address, 1000, true))
+            .to.emit(tokenBridgeMainnet, `BridgeTokens`)
+            .withArgs(user[4].address, 1000);
+        await tokenTestnet.connect(deployer).transfer(tokenBridgeTestnet.address, 10000);
+        await bridgeMainnetToTestnet();
+        expect((await tokenTestnet.getVotes(user[4].address)) - before).to.be.equal(1000);
+    });
+    it("tranfer ERC-20 from testnet to mainnet", async () => {
+        let before = await tokenMainnet.balanceOf(user[0].address);
+
+        await tokenTestnet.connect(user[4]).approve(tokenBridgeTestnet.address, 1000);
+
+        await expect(tokenBridgeTestnet.connect(user[4]).bridgeToken(user[0].address, 1000, true))
+            .to.emit(tokenBridgeTestnet, `BridgeTokens`)
+            .withArgs(user[0].address, 1000);
+
+        await tokenMainnet.connect(deployer).transfer(tokenBridgeMainnet.address, 10000);
+
+        await bridgeTestnetToMainnet();
+        expect((await tokenMainnet.getVotes(user[0].address)) - before).to.be.equal(1000);
+    });
+
+    it("Create proposal", async () => {
         let ABI = ["function store(uint256 newValue)"];
         let iBox = new ethers.utils.Interface(ABI);
         const tx = iBox.encodeFunctionData("store", [77n]);
         calldata = tx;
         const proposalTx = await DAOMainnet.propose([box.address], [0], [tx], "Proposal #1 set 77 in the Box!");
         const receiptProposalTx = await proposalTx.wait();
-        console.log(" ProposalId =  ", receiptProposalTx.events[0].args.proposalId.toString());
+        //console.log(" ProposalId =  ", receiptProposalTx.events[0].args.proposalId.toString());
         proposalId = receiptProposalTx.events[0].args.proposalId;
-        merkleTreeMainnet = new MerkleTreeBridge(32);
-        merkleTreeTestnet = new MerkleTreeBridge(32);
         await bridgeMainnetToTestnet();
-        console.log(" is proposal ", await DAOTestnet.isProposal(proposalId));
-        console.log(" proposal snapshot = ", await DAOMainnet.proposalSnapshot(proposalId));
-        console.log(" proposal deadline = ", await DAOMainnet.proposalDeadline(proposalId));
-        console.log(" block now = ", await ethers.provider.getBlockNumber());
     });
 
     it("Vote on multi chain", async () => {
@@ -171,6 +189,7 @@ describe("simulation on hardhat enviroiment", () => {
             .to.be.emit(DAOTestnet, "VoteCasted")
             .withArgs(proposalId, user[4].address, 1, await tokenTestnet.balanceOf(user[4].address));
     });
+
     it("Vote in hub chain after deadline", async () => {
         await mine(100);
         await expect(DAOMainnet.connect(user[1]).castVote(proposalId, 1)).to.be.revertedWith(
@@ -185,9 +204,9 @@ describe("simulation on hardhat enviroiment", () => {
         );
     });
 
-    it("Collect vote", async () => {
+    it("Collect vote and execute transaction", async () => {
         await mine(1000);
-        //collect vote from testnet to mainnet
+
         await DAOMainnet.requestCollections(proposalId, true);
 
         //Bridge
@@ -265,6 +284,12 @@ describe("simulation on hardhat enviroiment", () => {
             )
         )
             .to.emit(PZKbridgeMainnet, "ClaimEvent")
-            .withArgs(0, 1, DAOTestnet.address, DAOHubMessenger.address, 0);
+            .withArgs(
+                receipt.length - 1,
+                1,
+                receipt[receipt.length - 1].args.originAddress,
+                receipt[receipt.length - 1].args.destinationAddress,
+                0
+            );
     }
 });

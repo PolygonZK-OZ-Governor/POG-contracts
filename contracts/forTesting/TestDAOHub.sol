@@ -5,10 +5,10 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/governance/Governor.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
-import "./DAOHubGovernorCountingSimple.sol";
-import "./DAOHubMessenger.sol";
+import "../DAOHubGovernorCountingSimple.sol";
+import "../DAOHubMessenger.sol";
 
-contract DAOHub is Governor, GovernorSettings, GovernorVotes, DAOHubGovernorCountingSimple, IMessageController {
+contract DAOHubTest is Governor, GovernorSettings, GovernorVotes, DAOHubGovernorCountingSimple, IMessageController {
     mapping(uint32 => DAOHubMessenger) public messengers;
     mapping(uint256 => bool) public collectionStarted;
     mapping(uint256 => bool) public collectionFinished;
@@ -131,5 +131,10 @@ contract DAOHub is Governor, GovernorSettings, GovernorVotes, DAOHubGovernorCoun
         require(!spokeVotes[proposalId][spokeNetwork].initialized, "Aready initialized!");
         spokeVotes[proposalId][spokeNetwork] = SpokeProposalVote(forVotes, againstVotes, abstainVotes, true);
         emit ReceiveSpokeVotingData(spokeNetwork, proposalId);
+    }
+
+    function addSpoke(uint32 spokeNetwork, DAOHubMessenger messengerAddress) public {
+        messengers[spokeNetwork] = messengerAddress;
+        spokeNetworks.push(spokeNetwork);
     }
 }

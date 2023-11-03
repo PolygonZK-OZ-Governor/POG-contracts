@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.17;
 
-import "./interfaces/IPolygonZkEVMGlobalExitRoot.sol";
-import "./lib/GlobalExitRootLib.sol";
+import "../polygonZKEVMContracts/interfaces/IPolygonZkEVMGlobalExitRoot.sol";
+import "../polygonZKEVMContracts/lib/GlobalExitRootLib.sol";
 
 /**
  * Contract responsible for managing the exit roots across multiple networks
  */
-contract PolygonZkEVMGlobalExitRoot is IPolygonZkEVMGlobalExitRoot {
+contract PolygonZkEVMGlobalExitRootTest is IPolygonZkEVMGlobalExitRoot {
     // PolygonZkEVMBridge address
     address public immutable bridgeAddress;
 
@@ -74,5 +74,23 @@ contract PolygonZkEVMGlobalExitRoot is IPolygonZkEVMGlobalExitRoot {
      */
     function getLastGlobalExitRoot() public view returns (bytes32) {
         return GlobalExitRootLib.calculateGlobalExitRoot(lastMainnetExitRoot, lastRollupExitRoot);
+    }
+
+    function updateMainnetRootForTesting(bytes32 newRoot) public returns (bytes32) {
+        bytes32 cacheLastRollupExitRoot = lastRollupExitRoot;
+        bytes32 cacheLastMainnetExitRoot = lastMainnetExitRoot;
+
+        lastMainnetExitRoot = newRoot;
+        cacheLastMainnetExitRoot = newRoot;
+
+        bytes32 newGlobalExitRoot = GlobalExitRootLib.calculateGlobalExitRoot(
+            cacheLastMainnetExitRoot,
+            cacheLastRollupExitRoot
+        );
+        if (globalExitRootMap[newGlobalExitRoot] == 0) {
+            globalExitRootMap[newGlobalExitRoot] = block.timestamp;
+            emit UpdateGlobalExitRoot(cacheLastMainnetExitRoot, cacheLastRollupExitRoot);
+        }
+        return lastMainnetExitRoot;
     }
 }

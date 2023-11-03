@@ -87,6 +87,7 @@ const config: HardhatUserConfig = {
             },
         },
     },
+    docgen: {},
 };
 
 export default config;
