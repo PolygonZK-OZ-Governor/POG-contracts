@@ -6,32 +6,30 @@ The smart contract system of the PolygonZKEVM Openzeppelin-based governor
 
 ## polygonZKEVMContract
 
--   polygonZkEVMContract are contracts that belong to the bridge part of the Polygon network, here we use it for testing on the Hardhat environment
+polygonZkEVMContract are contracts that belong to the bridge part of the Polygon network, here we use it for testing on the Hardhat environment
 
 ## DAO Contract
 
-### DAOHub
+-   ### DAOHub.sol
 
-Hub Governor
+    Hub Governor
 
-### DAOSatellite
+-   ### DAOSatellite.sol
 
-SmartContract branches at spokeNetworks with the main function of receiving notifications from the Hub Governor, confirming and synthesizing votes on that network and bridging to the main network after the vote ends.
+    SmartContract branches at spokeNetworks with the main function of receiving notifications from the Hub Governor, confirming and synthesizing votes on that network and bridging to the main network after the vote ends.
 
-### DAOHubMessenger
+-   ### DAOHubMessenger.sol
 
-Has the function of bridging DAO messages to DAOSatellites in other spoke networks
+    Has the function of bridging DAO messages to DAOSatellites in other spoke networks
 
--   #### bridgeProposal
--   #### \_onMessageReceived
--   #### \_onReceiveSpokeVotingData
+-   ### DAOSatelliteMessenger.sol
 
-### DAOSatelliteMessenger
+    Interact with messages sent from the other bridge
 
-Interact with messages sent from the other bridge
+-   ### DAOHubGovernorCountingSimple.sol
 
 ## Token Contract
 
-### ERC20BridgeNativeChain
+-   ### ERC20BridgeNativeChain
 
-Organize bridge token function between chains
+    Organize bridge token function between chains, base on PolygonERC20Base

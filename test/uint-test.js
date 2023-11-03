@@ -183,11 +183,13 @@ describe("simulation on hardhat enviroiment", () => {
         await expect(await DAOMainnet.connect(user[0]).castVote(proposalId, 1))
             .to.be.emit(DAOMainnet, "VoteCast")
             .withArgs(user[0].address, proposalId, 1, await tokenMainnet.balanceOf(user[0].address), "");
-
+        //console.log(" usser 0 vote ", Number(await tokenMainnet.getVotes(user[0].address)));
         //user4 vote on Testnet
         await expect(await DAOTestnet.connect(user[4]).castVote(proposalId, 1))
             .to.be.emit(DAOTestnet, "VoteCasted")
             .withArgs(proposalId, user[4].address, 1, await tokenTestnet.balanceOf(user[4].address));
+
+        //console.log(" usser 4 vote ", Number(await tokenTestnet.getVotes(user[4].address)));
     });
 
     it("Vote in hub chain after deadline", async () => {
@@ -219,9 +221,13 @@ describe("simulation on hardhat enviroiment", () => {
             [box.address],
             [0],
             [calldata],
-            await ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Proposal #1 set 77 in the Box!"))
+            ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Proposal #1 set 77 in the Box!"))
         );
         expect(await box.retrieve()).to.be.equal(77);
+
+        // expect(Number((await DAOMainnet.proposalVotes(proposalId)).forVotes)).to.be.equal(
+        //     Number(await tokenMainnet.getVotes(user[0].address)) + Number(await tokenTestnet.getVotes(user[4].address))
+        // );
     });
 
     async function bridgeMainnetToTestnet() {

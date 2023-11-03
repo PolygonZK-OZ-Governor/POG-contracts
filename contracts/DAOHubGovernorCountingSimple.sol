@@ -94,6 +94,7 @@ abstract contract DAOHubGovernorCountingSimple is Governor {
             againstVotes += spokeVote.againstVotes;
             forVotes += spokeVote.forVotes;
         }
+
         return forVotes > againstVotes;
     }
 
